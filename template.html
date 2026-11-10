@@ -1,0 +1,1106 @@
+<title>Taiwan Stock &amp; Option Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: a trading-desk console — sticky tab rail over one wide working column; panels are flat sheets, only the live quote board gets a frame. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --sunk:#eaeef4; --ink:#141c2a; --muted:#5a6578; --line:#d9dfe8;
+  --accent:#2c49c9; --accent-soft:#e3e8fb;
+  --up:#cf2e2a; --up-soft:#fbe6e4; --down:#11804c; --down-soft:#e1f3ea; --warn:#a76a0c;
+  --s-arima:#c55a11; --s-garch:#7a3fd6; --s-lstm:#0d7891; --s-ens:#141c2a; --s-rw:#8a94a6;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Noto Sans TC","Noto Sans KR",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --f-tc:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e131b; --surface:#151c27; --sunk:#1b2431; --ink:#e5e9f0; --muted:#97a2b4; --line:#273244;
+  --accent:#8299ff; --accent-soft:#1f2a4d;
+  --up:#ff6a5c; --up-soft:#3a1d1d; --down:#3ccb8a; --down-soft:#123126; --warn:#e3a93b;
+  --s-arima:#ff9a4d; --s-garch:#b896ff; --s-lstm:#3cc4e6; --s-ens:#e5e9f0; --s-rw:#6c778a;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e131b; --surface:#151c27; --sunk:#1b2431; --ink:#e5e9f0; --muted:#97a2b4; --line:#273244;
+  --accent:#8299ff; --accent-soft:#1f2a4d;
+  --up:#ff6a5c; --up-soft:#3a1d1d; --down:#3ccb8a; --down-soft:#123126; --warn:#e3a93b;
+  --s-arima:#ff9a4d; --s-garch:#b896ff; --s-lstm:#3cc4e6; --s-ens:#e5e9f0; --s-rw:#6c778a;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;text-wrap:balance;margin:0;line-height:1.15}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:700;font-stretch:100%}
+p{margin:0;max-width:68ch}
+.tc{font-family:var(--f-tc)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+header.top{padding-block:28px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+.top .row{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between}
+.brand{display:flex;flex-direction:column;gap:6px;min-width:0}
+.brand h1{font-size:clamp(1.7rem,3.6vw,2.6rem);font-weight:800;font-stretch:78%;letter-spacing:-.01em}
+.brand h1 span{color:var(--accent)}
+.brand .sub{color:var(--muted);font-size:.92rem}
+.stamp{display:flex;gap:18px;flex-wrap:wrap}
+.stamp div{display:flex;flex-direction:column;gap:2px}
+.stamp b{font-family:var(--f-mono);font-weight:500;font-size:.95rem}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+nav.tabs .wrap{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{appearance:none;border:0;background:none;color:var(--muted);font:600 .92rem var(--f-body);padding:13px 14px 11px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{padding-block:28px 60px}
+section.tab{display:flex;flex-direction:column;gap:28px}
+.lede{display:flex;flex-direction:column;gap:8px}
+.lede p{color:var(--muted)}
+
+.grid{display:grid;gap:20px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel.flat{background:none;border:0;padding:0}
+.panel header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+
+.tile{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:6px;min-width:0}
+.tile .v{font-family:var(--f-mono);font-size:1.45rem;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile .d{font-size:.8rem;color:var(--muted)}
+
+.chart{position:relative;height:300px;width:100%}
+.chart.sm{height:200px}
+.chart.lg{height:360px}
+
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{appearance:none;border:0;border-right:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 .85rem var(--f-body);padding:6px 11px;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:var(--surface);font:600 .88rem var(--f-body);padding:8px 14px;border-radius:5px;cursor:pointer}
+.btn.ghost{background:none;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+select,input[type=number],input[type=text],textarea{font:500 .9rem var(--f-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:6px 8px;min-width:0}
+textarea{width:100%;min-height:88px;resize:vertical;line-height:1.45}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted);font-weight:600;min-width:0}
+label.f input{width:100%}
+
+.tbl-wrap{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.txt{font-family:var(--f-body)}
+tr.best td{font-weight:600}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* T-quote */
+.tq th,.tq td{padding:5px 7px;font-size:.82rem}
+.tq td.k,.tq th.k{text-align:center;font-weight:600;background:var(--sunk);color:var(--ink)}
+.tq td.itm{background:var(--accent-soft)}
+.tq tr.atm td.k{background:var(--accent);color:var(--surface)}
+.tq tbody tr{cursor:pointer}
+.tq tbody tr:hover td{outline:1px solid var(--line)}
+.tq th.side{text-align:center;font-size:.78rem}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--sunk);color:var(--muted)}
+.pill.ok{background:var(--down-soft);color:var(--down)}
+.pill.run{background:var(--accent-soft);color:var(--accent)}
+.pill.bad{background:var(--up-soft);color:var(--up)}
+
+.stages{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.stage{display:flex;flex-direction:column;gap:8px;padding:16px;border-top:3px solid var(--accent);background:var(--surface);border-radius:0 0 6px 6px;min-width:0}
+.stage .n{font-family:var(--f-display);font-weight:800;font-size:1.5rem;font-stretch:75%;color:var(--accent)}
+.xform{display:grid;grid-template-columns:1fr auto 1fr;gap:6px 10px;align-items:center;font-family:var(--f-mono);font-size:.84rem}
+.xform .from{color:var(--muted);overflow-wrap:anywhere}
+.xform .to{overflow-wrap:anywhere}
+pre.out{margin:0;font:400 .82rem/1.5 var(--f-mono);background:var(--sunk);padding:12px;border-radius:5px;overflow-x:auto;white-space:pre}
+
+.arch{display:grid;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.arch .r{display:grid;grid-template-columns:150px 1fr 1fr;border-bottom:1px solid var(--line)}
+.arch .r:last-child{border-bottom:0}
+.arch .r>div{padding:11px 14px;min-width:0}
+.arch .r>div:first-child{font-family:var(--f-display);font-weight:700;font-stretch:85%;background:var(--sunk)}
+.arch .r.h>div{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;font-family:var(--f-body);background:var(--surface)}
+@media (max-width:640px){.arch .r{grid-template-columns:1fr}.arch .r.h{display:none}.arch .r>div:not(:first-child)::before{content:attr(data-h);display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}}
+
+.quote{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:baseline}
+.quote .px{font-family:var(--f-mono);font-size:2rem;font-weight:500;font-variant-numeric:tabular-nums}
+.quote .chg{font-family:var(--f-mono);font-size:1.05rem}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.bar{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.note{font-size:.84rem;color:var(--muted);max-width:none}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.calc{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+:root:lang(ko){--f-body:"IBM Plex Sans","Noto Sans KR",system-ui,"Malgun Gothic",sans-serif}
+:root:lang(zh-Hant){--f-body:"IBM Plex Sans","Noto Sans TC",system-ui,"Microsoft JhengHei",sans-serif}
+:root:lang(ko) h1,:root:lang(ko) h2,:root:lang(zh-Hant) h1,:root:lang(zh-Hant) h2{font-family:var(--f-body);font-stretch:100%;letter-spacing:0}
+.langsw{display:flex;align-items:center;gap:8px}
+.langsw .seg button{font-size:.82rem;padding:5px 10px}
+footer{padding-block:24px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:.84rem}
+@media (max-width:520px){.wrap{padding-inline:16px}.chart{height:240px}.chart.lg{height:280px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap row">
+    <div class="brand">
+      <span class="label">ICCAI 2027 · Special Session 2 &nbsp;/&nbsp; TCSE 2026 Poster</span>
+      <h1 data-i18n-html="title.h1">Taiwan Stock <span>&amp;</span> Option Analytics</h1>
+      <p class="sub" data-i18n="title.sub">FinTech analytics and machine learning platform for TWSE equities and TAIFEX index options (TXO)</p>
+      <p class="sub" data-i18n="title.authors">Chia-Chun Kang (Cheng Shiu University), Yu-Cheng Li &amp; Yu-De He (Shu-Te University)</p>
+    </div>
+    <div class="stamp">
+      <div><span class="label" data-i18n="st.eq">Equity data</span><b id="st-eq">—</b></div>
+      <div><span class="label" data-i18n="st.txo">TXO chain</span><b id="st-txo">—</b></div>
+      <div><span class="label" data-i18n="st.upd">Last refreshed</span><b id="st-upd">—</b></div>
+      <div class="langsw"><span class="label" data-i18n="st.lang">Language</span><div class="seg" id="lang" role="group" aria-label="Language"><button data-v="zh" lang="zh-Hant">繁體中文</button><button data-v="en" lang="en">English</button><button data-v="ko" lang="ko">한국어</button></div></div>
+    </div>
+  </div>
+</header>
+<nav class="tabs" aria-label="Modules"><div class="wrap" role="tablist">
+  <button role="tab" data-tab="overview" data-i18n="tab.overview">Overview</button>
+  <button role="tab" data-tab="etl" data-i18n="tab.etl">ETL Pipeline</button>
+  <button role="tab" data-tab="market" data-i18n="tab.market">Stock Dashboard</button>
+  <button role="tab" data-tab="options" data-i18n="tab.options">Option Analytics</button>
+  <button role="tab" data-tab="sentiment" data-i18n="tab.sentiment">TXO Sentiment</button>
+  <button role="tab" data-tab="forecast" data-i18n="tab.forecast">ML Forecasting</button>
+</div></nav>
+
+<main class="wrap">
+
+<!-- OVERVIEW -->
+<section class="tab" id="tab-overview">
+  <div class="lede">
+    <h2 data-i18n="ov.h2">A working build of the platform</h2>
+    <p data-i18n="ov.p">Every number on these pages is computed in your browser from real exchange data.</p>
+  </div>
+  <div class="grid g4" id="ov-tiles"></div>
+  <div class="panel flat">
+    <h3 data-i18n="arch.h3">Architecture: paper stack and this demo</h3>
+    <div class="arch" id="arch">
+      <div class="r h"><div data-i18n="arch.layer">Layer</div><div data-i18n="arch.prod">Production stack (paper)</div><div data-i18n="arch.demo">In this live demo</div></div>
+      <div class="r"><div data-i18n="arch.data">Data</div><div class="p" data-i18n="arch.data.p"></div><div class="d" data-i18n="arch.data.d"></div></div>
+      <div class="r"><div data-i18n="arch.queue">Queue</div><div class="p" data-i18n="arch.queue.p"></div><div class="d" data-i18n="arch.queue.d"></div></div>
+      <div class="r"><div data-i18n="arch.back">Back end</div><div class="p" data-i18n="arch.back.p"></div><div class="d" data-i18n="arch.back.d"></div></div>
+      <div class="r"><div data-i18n="arch.ana">Analytics</div><div class="p" data-i18n="arch.ana.p"></div><div class="d" data-i18n="arch.ana.d"></div></div>
+      <div class="r"><div data-i18n="arch.front">Front end</div><div class="p" data-i18n="arch.front.p"></div><div class="d" data-i18n="arch.front.d"></div></div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="panel">
+      <header><h3 data-i18n="hyp.h3">Hypotheses and where to see them</h3></header>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th data-i18n="hyp.th1">Hypothesis</th><th style="text-align:left" data-i18n="hyp.th2">Live evidence</th></tr></thead>
+        <tbody>
+          <tr><td class="txt" style="white-space:normal"><b>H1</b> <span data-i18n="hyp.h1"></span></td><td class="txt" style="text-align:left;white-space:normal" data-i18n-html="hyp.h1e"></td></tr>
+          <tr><td class="txt" style="white-space:normal"><b>H2</b> <span data-i18n="hyp.h2"></span></td><td class="txt" style="text-align:left;white-space:normal" data-i18n-html="hyp.h2e"></td></tr>
+          <tr><td class="txt" style="white-space:normal"><b>H3</b> <span data-i18n="hyp.h3x"></span></td><td class="txt" style="text-align:left;white-space:normal" data-i18n-html="hyp.h3e"></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <header><h3 data-i18n="pap.h3">Results reported in the paper</h3><span class="pill" data-i18n="pap.pill">TSMC 2330 · 2023 sample</span></header>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th data-i18n="th.model">Model</th><th>RMSE</th><th>MAPE</th><th data-i18n="th.dir">Dir. acc.</th><th>Theil's U</th></tr></thead>
+        <tbody>
+          <tr><td class="txt" data-i18n="m.rw">Random walk</td><td>25.40</td><td>2.80%</td><td>—</td><td>1.000</td></tr>
+          <tr><td class="txt">ARIMA</td><td>19.20</td><td>2.20%</td><td>52.4%</td><td>0.756</td></tr>
+          <tr><td class="txt" data-i18n="m.lstm60">LSTM (60-day)</td><td>18.42</td><td>1.83%</td><td>55.6%</td><td>0.725</td></tr>
+          <tr class="best"><td class="txt" data-i18n="m.ens">Equal-weighted ensemble</td><td>14.10</td><td>1.60%</td><td>56.3%</td><td>0.555</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" data-i18n="pap.note"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ETL -->
+<section class="tab" id="tab-etl" hidden>
+  <div class="lede">
+    <h2 data-i18n="tab.etl">ETL pipeline</h2>
+    <p data-i18n="etl.p"></p>
+  </div>
+  <div class="stages">
+    <div class="stage"><span class="n">1</span><h3 data-i18n="etl.s1">Calendar conversion</h3><p class="note" data-i18n="etl.s1n"></p><div class="xform"><span class="from">115/11/09</span><span>→</span><span class="to">2026-11-09</span><span class="from">113/04/23</span><span>→</span><span class="to">2024-04-23</span></div></div>
+    <div class="stage"><span class="n">2</span><h3>Big5 → UTF-8</h3><p class="note" data-i18n="etl.s2n"></p><div class="xform"><span class="from mono" id="b5-hex">—</span><span>→</span><span class="to tc" id="b5-ok">—</span></div></div>
+    <div class="stage"><span class="n">3</span><h3 data-i18n="etl.s3">Numeric sanitisation</h3><p class="note" data-i18n="etl.s3n"></p><div class="xform"><span class="from">"2,510.00"</span><span>→</span><span class="to">2510</span><span class="from">"+30.00"</span><span>→</span><span class="to">30</span><span class="from">"--" / "-"</span><span>→</span><span class="to">NULL</span></div></div>
+  </div>
+  <div class="panel">
+    <header><h3 data-i18n="etl.log">Ingestion log</h3><span class="pill" id="etl-pill">—</span></header>
+    <div class="tbl-wrap"><table id="etl-log"><thead><tr><th data-i18n="etl.c1">Source</th><th data-i18n="etl.c2">Endpoint</th><th data-i18n="etl.c3">Raw rows</th><th data-i18n="etl.c4">Loaded</th><th data-i18n="etl.c5">ROC dates converted</th><th data-i18n="etl.c6">NULLs set</th><th data-i18n="etl.c7">Exceptions</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="grid g2">
+    <div class="panel">
+      <header><h3 data-i18n="etl.try">Try a raw row</h3><span class="label" data-i18n="etl.fmt">TWSE STOCK_DAY format</span></header>
+      <p class="note" data-i18n="etl.tryn"></p>
+      <textarea id="etl-in" spellcheck="false" aria-label="Raw row"></textarea>
+      <div class="ctrls"><button class="btn" id="etl-run" data-i18n="etl.run">Run ETL</button><button class="btn ghost" id="etl-ex" data-i18n="etl.ex">Load untraded example</button></div>
+      <pre class="out" id="etl-out"></pre>
+    </div>
+    <div class="panel">
+      <header><h3 data-i18n="b5.h3">Big5 decoding</h3><span class="label" data-i18n="b5.lbl">Legacy TAIFEX CSV line</span></header>
+      <p class="note" data-i18n="b5.note"></p>
+      <div class="label" data-i18n="b5.raw">Raw bytes (hex)</div>
+      <pre class="out" id="b5-bytes"></pre>
+      <div class="label" data-i18n="b5.good">Decoded as Big5 (pipeline)</div>
+      <pre class="out tc" id="b5-good"></pre>
+      <div class="label" data-i18n="b5.bad">Misread as UTF-8</div>
+      <pre class="out" id="b5-bad"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- MARKET -->
+<section class="tab" id="tab-market" hidden>
+  <div class="lede">
+    <h2 data-i18n="tab.market">Stock dashboard</h2>
+    <p data-i18n="mk.p"></p>
+  </div>
+  <div class="ctrls">
+    <div class="seg" id="mk-stock"></div>
+    <div class="seg" id="mk-range"></div>
+    <button class="btn ghost" id="mk-csv" hidden data-i18n="csv">Export CSV</button>
+  </div>
+  <div class="panel">
+    <div class="quote" id="mk-quote"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="mk.close">Close</span></span><span><i style="background:var(--s-arima)"></i>MA5</span><span><i style="background:var(--s-garch)"></i>MA20</span></div>
+    <div class="chart lg"><canvas id="c-price" aria-label="Closing price chart"></canvas></div>
+    <div class="chart sm"><canvas id="c-vol" aria-label="Volume chart"></canvas></div>
+  </div>
+  <div class="panel">
+    <header><h3 data-i18n="mk.hv">Historical volatility (annualised)</h3><div class="legend"><span><i style="background:var(--s-lstm)"></i>HV20</span><span><i style="background:var(--s-garch)"></i>HV60</span></div></header>
+    <div class="chart sm"><canvas id="c-hv" aria-label="Historical volatility chart"></canvas></div>
+  </div>
+</section>
+
+<!-- OPTIONS -->
+<section class="tab" id="tab-options" hidden>
+  <div class="lede">
+    <h2 data-i18n="tab.options">Option analytics</h2>
+    <p data-i18n="op.p"></p>
+  </div>
+  <div class="grid g2">
+    <div class="panel">
+      <header><h3 data-i18n="bs.h3">Black–Scholes calculator</h3><span class="label" id="bs-src"></span></header>
+      <div class="calc">
+        <label class="f"><span data-i18n="bs.S">Spot S</span><input type="number" id="bs-S" step="1"></label>
+        <label class="f"><span data-i18n="bs.K">Strike K</span><input type="number" id="bs-K" step="100"></label>
+        <label class="f"><span data-i18n="bs.r">Rate r (%)</span><input type="number" id="bs-r" step="0.05"></label>
+        <label class="f"><span data-i18n="bs.T">Days to expiry</span><input type="number" id="bs-T" step="1" min="0.1"></label>
+        <label class="f"><span data-i18n="bs.v">Volatility σ (%)</span><input type="number" id="bs-v" step="0.5" min="0.1"></label>
+      </div>
+      <div class="ctrls"><span class="label" data-i18n="bs.from">Set σ from</span><div class="seg" id="bs-vsrc"><button data-v="atm" data-i18n="bs.atm">ATM IV</button><button data-v="hv" data-i18n="bs.hv">TAIEX HV20</button><button data-v="garch">GARCH</button></div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th></th><th data-i18n="bs.price">Price</th><th>Delta</th><th>Gamma</th><th data-i18n="bs.theta">Theta /day</th><th>Vega /1%</th></tr></thead>
+        <tbody id="bs-out"></tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <header><h3 data-i18n="iv.h3">Implied volatility solver</h3><span class="label" data-i18n="iv.lbl">Brent vs bisection</span></header>
+      <div class="calc">
+        <label class="f"><span data-i18n="iv.type">Option type</span><select id="iv-cp"><option value="C" data-i18n="call">Call</option><option value="P" data-i18n="put">Put</option></select></label>
+        <label class="f"><span data-i18n="iv.px">Market price</span><input type="number" id="iv-px" step="1"></label>
+      </div>
+      <dl class="kv" id="iv-out"></dl>
+      <div class="chart sm"><canvas id="c-iv" aria-label="Solver convergence chart"></canvas></div>
+      <p class="note" data-i18n="iv.note"></p>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h3 data-i18n="tq.h3">TXO T-quote</h3>
+      <div class="ctrls"><div class="seg" id="tq-exp"></div><label class="label" for="tq-n" data-i18n="tq.n">Strikes</label><select id="tq-n"><option value="10">±10</option><option value="20" selected>±20</option><option value="40">±40</option></select></div>
+    </header>
+    <div class="ctrls note" id="tq-meta"></div>
+    <div class="tbl-wrap"><table class="tq" id="tq"></table></div>
+    <p class="note" data-i18n="tq.note"></p>
+  </div>
+  <div class="panel">
+    <header><h3 data-i18n="sm.h3">Volatility smile</h3><div class="legend"><span><i style="background:var(--s-arima)"></i><span data-i18n="sm.e1">Nearest monthly</span></span><span><i style="background:var(--s-lstm)"></i><span data-i18n="sm.e2">Next monthly</span></span><span><i style="background:var(--s-garch)"></i><span data-i18n="sm.e3">Third monthly</span></span></div></header>
+    <div class="chart"><canvas id="c-smile" aria-label="Volatility smile chart"></canvas></div>
+    <p class="note" data-i18n="sm.note"></p>
+  </div>
+</section>
+
+<!-- SENTIMENT -->
+<section class="tab" id="tab-sentiment" hidden>
+  <div class="lede">
+    <h2 data-i18n="tab.sentiment">TXO sentiment</h2>
+    <p data-i18n="se.p"></p>
+  </div>
+  <div class="grid g3" id="se-tiles"></div>
+  <div class="panel">
+    <header><h3 data-i18n="se.oi">Open interest by strike</h3><div class="ctrls"><div class="seg" id="se-exp"></div></div></header>
+    <div class="legend"><span><i style="background:var(--up)"></i><span data-i18n="se.coi">Call OI</span></span><span><i style="background:var(--down)"></i><span data-i18n="se.poi">Put OI</span></span><span><i style="background:var(--ink)"></i><span data-i18n="spot">Spot</span></span></div>
+    <div class="chart lg"><canvas id="c-oi" aria-label="Open interest chart"></canvas></div>
+  </div>
+</section>
+
+<!-- FORECAST -->
+<section class="tab" id="tab-forecast" hidden>
+  <div class="lede">
+    <h2 data-i18n="tab.forecast">ML forecasting</h2>
+    <p data-i18n="fc.p"></p>
+  </div>
+  <div class="ctrls"><div class="seg" id="fc-stock"></div><button class="btn ghost" id="fc-csv" hidden data-i18n="fc.csv">Export predictions CSV</button></div>
+  <div class="grid g2">
+    <div class="panel">
+      <header><h3 data-i18n="fc.stat">Statistical models</h3><span class="pill" id="fc-stat-pill"></span></header>
+      <div class="bar"><i id="fc-stat-bar"></i></div>
+      <dl class="kv" id="fc-stat"></dl>
+    </div>
+    <div class="panel">
+      <header><h3 data-i18n="fc.lstm">Stacked LSTM</h3><span class="pill" id="fc-lstm-pill"></span></header>
+      <div class="ctrls">
+        <label class="label" for="fc-ep" data-i18n="fc.ep">Max epochs</label>
+        <select id="fc-ep"><option value="15" data-i18n="fc.ep15">15 (quick)</option><option value="30" selected>30</option><option value="100" data-i18n="fc.ep100">100 (paper)</option></select>
+        <button class="btn" id="fc-train" data-i18n="fc.train">Train LSTM</button>
+      </div>
+      <div class="bar"><i id="fc-lstm-bar"></i></div>
+      <div class="chart sm"><canvas id="c-loss" aria-label="Training loss chart"></canvas></div>
+      <p class="note" data-i18n="fc.lnote"></p>
+    </div>
+  </div>
+  <div class="panel">
+    <header><h3 data-i18n="fc.test">Test-set forecasts</h3><div class="legend" id="fc-legend"></div></header>
+    <div class="chart lg"><canvas id="c-fc" aria-label="Forecast comparison chart"></canvas></div>
+  </div>
+  <div class="grid g2">
+    <div class="panel">
+      <header><h3 data-i18n="fc.acc">Accuracy on the test set</h3><span class="label" id="fc-span"></span></header>
+      <div class="tbl-wrap"><table id="fc-metrics"><thead><tr><th data-i18n="th.model">Model</th><th>RMSE</th><th>MAE</th><th>MAPE</th><th data-i18n="th.dir">Dir. acc.</th><th>Theil's U</th></tr></thead><tbody></tbody></table></div>
+      <p class="note" id="fc-h2"></p>
+    </div>
+    <div class="panel">
+      <header><h3 data-i18n="fc.next">Next trading day</h3><span class="label" id="fc-next-date"></span></header>
+      <div class="tbl-wrap"><table id="fc-next"><thead><tr><th data-i18n="th.model">Model</th><th data-i18n="fc.fclose">Forecast close</th><th data-i18n="fc.vs">vs last close</th></tr></thead><tbody></tbody></table></div>
+      <dl class="kv" id="fc-h3"></dl>
+    </div>
+  </div>
+</section>
+</main>
+<footer><div class="wrap" id="foot"></div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+
+<script type="text/plain" id="worker-src">
+function nelderMead(f,x0,maxIter){
+  const n=x0.length;let P=[x0.slice()];
+  for(let i=0;i<n;i++){const x=x0.slice();x[i]=x[i]!==0?x[i]*1.1:0.1;P.push(x)}
+  let V=P.map(f);
+  for(let it=0;it<maxIter;it++){
+    const ix=V.map((v,i)=>i).sort((a,b)=>V[a]-V[b]);P=ix.map(i=>P[i]);V=ix.map(i=>V[i]);
+    if(Math.abs(V[n]-V[0])<=1e-10*(Math.abs(V[0])+1e-10))break;
+    const c=new Array(n).fill(0);for(let i=0;i<n;i++)for(let j=0;j<n;j++)c[j]+=P[i][j]/n;
+    const xr=c.map((v,j)=>v+(v-P[n][j])),fr=f(xr);
+    if(fr<V[0]){const xe=c.map((v,j)=>v+2*(v-P[n][j])),fe=f(xe);if(fe<fr){P[n]=xe;V[n]=fe}else{P[n]=xr;V[n]=fr}}
+    else if(fr<V[n-1]){P[n]=xr;V[n]=fr}
+    else{const xc=c.map((v,j)=>v+0.5*(P[n][j]-v)),fc=f(xc);
+      if(fc<V[n]){P[n]=xc;V[n]=fc}else{for(let i=1;i<=n;i++){P[i]=P[i].map((v,j)=>P[0][j]+0.5*(v-P[0][j]));V[i]=f(P[i])}}}
+  }
+  let b=0;for(let i=1;i<=n;i++)if(V[i]<V[b])b=i;return{x:P[b],f:V[b]};
+}
+function inv(A){const n=A.length,M=A.map((r,i)=>r.concat(Array.from({length:n},(_,j)=>i===j?1:0)));
+  for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+    const d=M[c][c];for(let j=0;j<2*n;j++)M[c][j]/=d;
+    for(let r=0;r<n;r++)if(r!==c){const f=M[r][c];for(let j=0;j<2*n;j++)M[r][j]-=f*M[c][j]}}
+  return M.map(r=>r.slice(n));}
+function ols(X,y){const k=X[0].length,n=X.length,XtX=Array.from({length:k},()=>new Array(k).fill(0)),Xty=new Array(k).fill(0);
+  for(let i=0;i<n;i++)for(let a=0;a<k;a++){Xty[a]+=X[i][a]*y[i];for(let b=0;b<k;b++)XtX[a][b]+=X[i][a]*X[i][b]}
+  const I=inv(XtX),beta=I.map(r=>r.reduce((s,v,j)=>s+v*Xty[j],0));
+  let sse=0;for(let i=0;i<n;i++){let p=0;for(let a=0;a<k;a++)p+=X[i][a]*beta[a];sse+=(y[i]-p)**2}
+  const s2=sse/(n-k);return{beta,se:I.map((r,i)=>Math.sqrt(s2*r[i]))};}
+function adf(y){const n=y.length,L=Math.max(1,Math.floor(Math.cbrt(n-1))),dy=[];for(let i=1;i<n;i++)dy.push(y[i]-y[i-1]);
+  const X=[],Y=[];for(let t=L;t<dy.length;t++){const r=[1,y[t]];for(let i=1;i<=L;i++)r.push(dy[t-i]);X.push(r);Y.push(dy[t])}
+  const o=ols(X,Y);return{stat:o.beta[1]/o.se[1],lags:L};}
+const diff=a=>a.slice(1).map((v,i)=>v-a[i]);
+const T0=5;
+function armaFilter(z,p,q,th){const mu=th[0],phi=th.slice(1,1+p),tht=th.slice(1+p),n=z.length,e=new Float64Array(n),pred=new Float64Array(n+1);
+  for(let t=0;t<=n;t++){let m=mu;for(let i=1;i<=p;i++)if(t-i>=0)m+=phi[i-1]*(z[t-i]-mu);for(let j=1;j<=q;j++)if(t-j>=0)m+=tht[j-1]*e[t-j];
+    pred[t]=m;if(t<n)e[t]=t<T0?0:z[t]-m;}
+  return{e,pred};}
+function fitArma(z,p,q){const mean=z.reduce((a,b)=>a+b,0)/z.length,neff=z.length-T0;
+  const obj=th=>{let sp=0,sq=0;for(let i=1;i<=p;i++)sp+=Math.abs(th[i]);for(let j=1;j<=q;j++)sq+=Math.abs(th[p+j]);if(sp>=0.999||sq>=0.999)return 1e12;
+    const {e}=armaFilter(z,p,q,th);let s=0;for(let t=T0;t<z.length;t++)s+=e[t]*e[t];return s;};
+  const r=nelderMead(obj,[mean].concat(new Array(p+q).fill(0)),300*(p+q+1));
+  const r2=nelderMead(obj,r.x,300*(p+q+1));
+  const s2=r2.f/neff;return{th:r2.x,s2,aic:neff*(Math.log(2*Math.PI*s2)+1)+2*(p+q+2)};}
+
+function runArima(P,split,post){
+  const train=P.slice(0,split);let d=0,series=train;const adfs=[];
+  while(d<2){const a=adf(series);adfs.push({d,stat:a.stat,lags:a.lags});if(a.stat<-2.86)break;d++;series=diff(series)}
+  if(d===2){const a=adf(series);adfs.push({d,stat:a.stat,lags:a.lags});}
+  let best=null,k=0;const grid=[];
+  for(let p=0;p<=5;p++)for(let q=0;q<=5;q++){const f=fitArma(series,p,q);grid.push({p,q,aic:f.aic});if(!best||f.aic<best.aic)best={p,q,...f};k++;post({type:'progress',v:k/36*0.8})}
+  let z=P;for(let i=0;i<d;i++)z=diff(z);
+  const {pred}=armaFilter(z,best.p,best.q,best.th);
+  const toPrice=(t,zp)=>d===0?zp:d===1?P[t-1]+zp:2*P[t-1]-P[t-2]+zp;
+  const preds=[];for(let t=split;t<P.length;t++)preds.push(toPrice(t,pred[t-d]));
+  const n=P.length,next=toPrice(n,pred[n-d]);
+  grid.sort((a,b)=>a.aic-b.aic);
+  return{order:[best.p,d,best.q],adf:adfs,aic:best.aic,sigma:Math.sqrt(best.s2),preds,next,top:grid.slice(0,3),params:best.th};
+}
+function runGarch(P,split){
+  const r=[];for(let i=1;i<P.length;i++)r.push(100*Math.log(P[i]/P[i-1]));
+  const rt=r.slice(0,split-1),m0=rt.reduce((a,b)=>a+b,0)/rt.length,v0=rt.reduce((a,b)=>a+(b-m0)**2,0)/rt.length;
+  const sig=x=>1/(1+Math.exp(-x));
+  const unpack=x=>{const pers=0.999*sig(x[2]),sh=sig(x[3]);return{mu:x[0],omega:Math.exp(x[1]),alpha:pers*sh,beta:pers*(1-sh)}};
+  const filt=(ret,pr)=>{const s2=new Float64Array(ret.length+1);s2[0]=v0;for(let t=1;t<=ret.length;t++){const e=ret[t-1]-pr.mu;s2[t]=pr.omega+pr.alpha*e*e+pr.beta*s2[t-1]}return s2;};
+  const nll=x=>{const pr=unpack(x),s2=filt(rt,pr);let L=0;for(let t=0;t<rt.length;t++){const e=rt[t]-pr.mu;L+=0.5*(Math.log(2*Math.PI*s2[t])+e*e/s2[t])}return isFinite(L)?L:1e12;};
+  let res=nelderMead(nll,[m0,Math.log(v0*0.05),2.5,-1.5],3000);res=nelderMead(nll,res.x,3000);
+  const pr=unpack(res.x),s2=filt(r,pr);
+  const preds=[];for(let t=split;t<P.length;t++)preds.push(P[t-1]*Math.exp(pr.mu/100));
+  const ann=Array.from(s2,v=>Math.sqrt(252*v)/100);
+  return{params:pr,ll:-res.f,preds,next:P[P.length-1]*Math.exp(pr.mu/100),ann,nextAnn:ann[ann.length-1],persistence:pr.alpha+pr.beta};
+}
+self.onmessage=ev=>{const {P,split,id}=ev.data;const post=m=>self.postMessage(Object.assign({id},m));
+  try{const t0=performance.now();const arima=runArima(P,split,post);post({type:'progress',v:0.85});const garch=runGarch(P,split);
+    post({type:'done',arima,garch,ms:performance.now()-t0});}
+  catch(err){post({type:'error',message:String(err&&err.message||err)})}};
+</script>
+
+<script>
+const RAW = /*__DATA__*/null;
+
+/* ---------- utilities ---------- */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=(v,d=2)=>v==null||!isFinite(v)?'—':v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=2)=>v==null||!isFinite(v)?'—':(v*100).toFixed(d)+'%';
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+/* ---------- i18n: 繁體中文 / English / 한국어 ---------- */
+const I18N={
+en:{
+ 'doc.title':'Taiwan Stock & Option Analytics',
+ 'title.h1':'Taiwan Stock <span>&amp;</span> Option Analytics',
+ 'title.sub':'FinTech analytics and machine learning platform for TWSE equities and TAIFEX index options (TXO)',
+ 'title.authors':'Chia-Chun Kang (Cheng Shiu University), Yu-Cheng Li & Yu-De He (Shu-Te University)',
+ 'st.eq':'Equity data','st.txo':'TXO chain','st.upd':'Last refreshed','st.lang':'Language',
+ 'tab.overview':'Overview','tab.etl':'ETL Pipeline','tab.market':'Stock Dashboard','tab.options':'Option Analytics','tab.sentiment':'TXO Sentiment','tab.forecast':'ML Forecasting',
+ 'ov.h2':'A working build of the platform',
+ 'ov.p':"Every number on these pages is computed in your browser from real exchange data downloaded from the TWSE and TAIFEX OpenAPIs. The page runs the paper's ETL rules, the Black–Scholes pricer with Brent's implied-volatility solver, and the ARIMA, GARCH(1,1), stacked LSTM and equal-weighted ensemble forecasts.",
+ 'ov.t1':'Daily equity records','ov.t1d':'2330 · 2317 · 2454','ov.t2':'TXO contracts priced','ov.t2d':'{n} monthly expiries · IV + Greeks','ov.t3':'TAIEX spot','ov.t3d':'close on {d}','ov.t4':'ETL exceptions','ov.t4d':'across all raw rows',
+ 'arch.h3':'Architecture: paper stack and this demo','arch.layer':'Layer','arch.prod':'Production stack (paper)','arch.demo':'In this live demo',
+ 'arch.data':'Data','arch.queue':'Queue','arch.back':'Back end','arch.ana':'Analytics','arch.front':'Front end',
+ 'arch.data.p':'TWSE & TAIFEX OpenAPI, daily scheduled crawl (13:30 stocks, 13:45 options)',
+ 'arch.data.d':'Raw exchange responses refreshed by a scheduled job after each trading day and re-ingested by the ETL on every page load',
+ 'arch.queue.p':'Redis 7.0 + Laravel Queue workers under Supervisor, retry ×3',
+ 'arch.queue.d':'Web Worker job queue: ARIMA / GARCH run off the UI thread',
+ 'arch.back.p':'Laravel 10 (PHP 8.2) REST API, Repository pattern, BlackScholes / Volatility / Prediction services',
+ 'arch.back.d':'The same three services as in-page modules',
+ 'arch.ana.p':'Python 3.10: statsmodels (ARIMA, GARCH), TensorFlow 2.x (LSTM), Brent IV solver',
+ 'arch.ana.d':'JavaScript ports of ADF + AIC-selected ARIMA, GARCH(1,1) MLE and Brent; LSTM trained with TensorFlow.js',
+ 'arch.front.p':'Vue 3 + Vuetify 3 + Chart.js dashboards','arch.front.d':'Chart.js dashboards (this page)',
+ 'hyp.h3':'Hypotheses and where to see them','hyp.th1':'Hypothesis','hyp.th2':'Live evidence',
+ 'hyp.h1':'Rule-based ETL ingests TWSE & TAIFEX data without crashes',
+ 'hyp.h2':"Equal-weighted ensemble beats single models, Theil's U < 1",
+ 'hyp.h3x':'Background workers keep the UI responsive',
+ 'hyp.h1e':'<a href="#etl" data-go="etl">ETL Pipeline</a>: ingestion log, exception count',
+ 'hyp.h2e':'<a href="#forecast" data-go="forecast">ML Forecasting</a>: metric table',
+ 'hyp.h3e':'<a href="#forecast" data-go="forecast">ML Forecasting</a>: UI frame-gap meter',
+ 'pap.h3':'Results reported in the paper','pap.pill':'TSMC 2330 · 2023 sample',
+ 'pap.note':"These are the paper's published figures (Table 4). The ML Forecasting tab reruns the same models on the 2024-to-date data loaded here, so its numbers will differ.",
+ 'th.model':'Model','th.dir':'Dir. acc.',
+ 'm.rw':'Random walk','m.lstm60':'LSTM (60-day)','m.ens':'Equal-weighted ensemble','m.ensOf':'Ensemble ({list})','m.ensPart':'Ensemble (partial)',
+ 'etl.p':'Exchange feeds use Republic of China (ROC) calendar dates, Big5 text in legacy reports, thousands separators and dash placeholders for untraded contracts. The three transformation rules below run on every raw row before anything is analysed.',
+ 'etl.s1':'Calendar conversion','etl.s1n':'Gregorian year = ROC year + 1911, output as ISO 8601.',
+ 'etl.s2n':'Legacy TAIFEX reports are decoded as Big5 so Chinese fields survive.',
+ 'etl.s3':'Numeric sanitisation','etl.s3n':'Strip separators and signs; dash placeholders become NULL.',
+ 'etl.log':'Ingestion log','etl.c1':'Source','etl.c2':'Endpoint','etl.c3':'Raw rows','etl.c4':'Loaded','etl.c5':'ROC dates converted','etl.c6':'NULLs set','etl.c7':'Exceptions',
+ 'etl.ok':'H1 holds: 0 exceptions','etl.bad':'{n} exceptions',
+ 'etl.try':'Try a raw row','etl.fmt':'TWSE STOCK_DAY format',
+ 'etl.tryn':'Edit the raw exchange row and run the ETL. Fields: date, shares, value, open, high, low, close, change, trades.',
+ 'etl.run':'Run ETL','etl.ex':'Load untraded example',
+ 'etl.res':'// {roc} ROC date converted, {nulls} NULL value(s) set',
+ 'etl.rej':'Rejected: {msg}\nThe production pipeline logs this row and continues.',
+ 'b5.h3':'Big5 decoding','b5.lbl':'Legacy TAIFEX CSV line',
+ 'b5.note':"A TAIFEX-style CSV line built from today's TXO chain and encoded in Big5. The same bytes are decoded with the correct charset and, for comparison, misread as UTF-8.",
+ 'b5.raw':'Raw bytes (hex)','b5.good':'Decoded as Big5 (pipeline)','b5.bad':'Misread as UTF-8 (what breaks a naive loader)','b5.none':'(this browser has no Big5 decoder)',
+ 'mk.p':'Daily OHLCV for the three benchmark stocks with 5- and 20-day moving averages and 20/60-day historical volatility. Price moves follow the Taiwan convention: red for up, green for down.',
+ 'csv':'Export CSV','mk.close':'Close','mk.hv':'Historical volatility (annualised)',
+ 'r.1M':'1M','r.3M':'3M','r.6M':'6M','r.1Y':'1Y','r.All':'All',
+ 'mk.date':'Date','mk.vol':'Volume (shares)','mk.hi':'{r} high','mk.lo':'{r} low','mk.lots':'lots (1,000 sh)',
+ 'name.2330':'TSMC','name.2317':'Foxconn','name.2454':'MediaTek',
+ 'op.p':"TXO settlement prices from TAIFEX, priced against the TAIEX close with r = 1.75% (Central Bank deposit rate). Implied volatility is solved per contract with Brent's method on σ ∈ [0.001, 5.0], tolerance 10⁻⁴. Click any row of the T-quote to load it into the calculator.",
+ 'bs.h3':'Black–Scholes calculator','bs.S':'Spot S','bs.K':'Strike K','bs.r':'Rate r (%)','bs.T':'Days to expiry','bs.v':'Volatility σ (%)',
+ 'bs.from':'Set σ from','bs.atm':'ATM IV','bs.hv':'TAIEX HV20','bs.price':'Price','bs.theta':'Theta /day',
+ 'bs.needg':'Run the forecasting models first',
+ 'src.hv':'σ = TAIEX 20-day HV','src.garch':'σ = GARCH(1,1), {code}','src.atm':'σ = ATM IV, K {k}','src.iv':'σ = IV of {side} {k}',
+ 'call':'Call','put':'Put',
+ 'iv.h3':'Implied volatility solver','iv.lbl':'Brent vs bisection','iv.type':'Option type','iv.px':'Market price',
+ 'iv.note':'Absolute pricing error per iteration (log scale). Uses S, K, r and days from the calculator.',
+ 'iv.iv':'Implied volatility','iv.bit':'Brent iterations','iv.qit':'Bisection iterations','iv.ms':'Brent solve time','iv.res':'Result','iv.none':'No σ in [0.1%, 500%] reproduces this price',
+ 'iv.bis':'Bisection','iv.iter':'iteration',
+ 'tq.h3':'TXO T-quote','tq.n':'Strikes','tq.exp':'Expiry {d}','tq.days':'{n} days','tq.spot':'Spot {s}','tq.atm':'ATM IV {v}',
+ 'tq.call':'Call · 買權','tq.put':'Put · 賣權','tq.strike':'Strike','tq.oi':'OI','tq.vol':'Vol','tq.settle':'Settle','tq.theo':'Theo',
+ 'tq.note':"Shaded cells are in the money. Theo is the Black–Scholes price at the calculator's σ. IV is blank where the settlement price is below intrinsic value, so no σ can reproduce it.",
+ 'sm.h3':'Volatility smile','sm.e1':'Nearest monthly','sm.e2':'Next monthly','sm.e3':'Third monthly','sm.d':'{n}d',
+ 'sm.note':'Out-of-the-money contracts only (puts below spot, calls above), settlement ≥ 2 points, strikes within ±20% of spot.',
+ 'sm.x':'Strike','sm.y':'Implied volatility',
+ 'se.p':'Put/Call ratios by volume and open interest, the open-interest distribution across strikes, and the max-pain strike where option holders would collect the least at settlement.',
+ 'se.tile':'TXO {m} · expires {d}','se.ratio':'Put/Call OI ratio ({p} / {c})','se.pcv':'P/C volume ratio','se.mp':'Max pain strike','se.dist':'Distance from spot',
+ 'se.oi':'Open interest by strike','se.coi':'Call OI','se.poi':'Put OI','spot':'Spot','se.y':'Open interest (contracts)',
+ 'fc.p':"One-step-ahead daily close forecasts with a chronological 80/20 split. ARIMA order is chosen by ADF test and AIC over p, q ∈ {0…5}; GARCH(1,1) is fitted by maximum likelihood; the LSTM uses the paper's Table 3 settings; the ensemble is an equal-weighted average.",
+ 'fc.csv':'Export predictions CSV','fc.stat':'Statistical models','fc.lstm':'Stacked LSTM',
+ 'p.queued':'Queued','p.run':'Running in worker','p.done':'Done','p.fail':'Failed','p.err':'Error',
+ 'fc.adf':'ADF statistic (5% crit. −2.86)','fc.order':'Selected ARIMA (p, d, q)','fc.runner':'Runner-up orders','fc.pers':'Persistence α+β','fc.sig':'Next-day σ (annualised) → option pricer','fc.ms':'Worker job time',
+ 'fc.ep':'Max epochs','fc.ep15':'15 (quick)','fc.ep100':'100 (paper)','fc.train':'Train LSTM',
+ 'fc.lnote':'2 × 50-unit LSTM layers, dropout 0.2, 60-day window, Adam (lr 0.001), MSE, batch 32, early stopping patience 10, MinMax scaling fitted on the training set. Weights start random, so results vary slightly between runs.',
+ 'l.none':'Not trained','l.prep':'Preparing','l.ep':'Epoch {e}/{m} · val loss {l}','l.done':'Trained · {n} epochs','l.fail':'Training failed: {m}','l.tf':'TensorFlow.js failed to load',
+ 'l.train':'train loss','l.val':'val loss','l.epoch':'epoch',
+ 'fc.test':'Test-set forecasts','fc.actual':'Actual','fc.band':'ARIMA 95% band',
+ 'fc.acc':'Accuracy on the test set','fc.span':'{a} → {b} · {n} days',
+ 'h2.need':'Train the LSTM to complete the three-model ensemble and test H2.',
+ 'h2.ok':"H2 holds on this sample: the ensemble has the lowest RMSE and Theil's U = {u} < 1.",
+ 'h2.no':'H2 does not fully hold on this sample: lowest RMSE is {best}{ens}. Results depend on the period; the paper used 2023.',
+ 'h2.ens':"; ensemble Theil's U = {u}",
+ 'fc.next':'Next trading day','fc.after':'after {d} · last close {p}','fc.fclose':'Forecast close','fc.vs':'vs last close','fc.running':'Running…',
+ 'h3.stat':'Longest UI frame gap while ARIMA/GARCH ran','h3.lstm':'Longest UI frame gap during LSTM training','h3.ep':'LSTM epochs run / backend',
+ 'foot':'Research demonstration, not investment advice. Data: Taiwan Stock Exchange and Taiwan Futures Exchange OpenAPIs, refreshed automatically after each trading day; last refresh {d}. Models run client-side; no data leaves the browser.'
+},
+zh:{
+ 'doc.title':'台灣股票與選擇權分析系統',
+ 'title.h1':'台灣股票<span>與</span>選擇權分析系統',
+ 'title.sub':'結合證交所個股與期交所台指選擇權（TXO）的金融科技分析與機器學習平台',
+ 'title.authors':'康珈淳（正修科技大學）、李宇誠、何昱德（樹德科技大學）',
+ 'st.eq':'個股資料','st.txo':'TXO 報價','st.upd':'最後更新','st.lang':'語言',
+ 'tab.overview':'總覽','tab.etl':'ETL 資料管線','tab.market':'股價儀表板','tab.options':'選擇權分析','tab.sentiment':'TXO 市場情緒','tab.forecast':'機器學習預測',
+ 'ov.h2':'可實際操作的平台展示',
+ 'ov.p':'本頁所有數字都是在您的瀏覽器中，以證交所與期交所 OpenAPI 的真實交易資料即時計算。頁面實際執行論文中的 ETL 規則、Black–Scholes 定價與 Brent 法隱含波動率求解，以及 ARIMA、GARCH(1,1)、雙層 LSTM 與等權重集成預測。',
+ 'ov.t1':'個股日資料筆數','ov.t1d':'2330 · 2317 · 2454','ov.t2':'已定價 TXO 合約','ov.t2d':'{n} 個月份 · IV 與 Greeks','ov.t3':'加權指數現貨','ov.t3d':'{d} 收盤','ov.t4':'ETL 例外','ov.t4d':'涵蓋所有原始資料列',
+ 'arch.h3':'系統架構：論文設計與本展示版對照','arch.layer':'層次','arch.prod':'正式環境（論文）','arch.demo':'本展示版',
+ 'arch.data':'資料層','arch.queue':'佇列層','arch.back':'後端層','arch.ana':'分析層','arch.front':'前端層',
+ 'arch.data.p':'證交所與期交所 OpenAPI，每日排程爬取（13:30 股票、13:45 選擇權）',
+ 'arch.data.d':'排程工作於每個交易日後更新交易所原始資料，每次開啟頁面時由 ETL 重新匯入',
+ 'arch.queue.p':'Redis 7.0 + Laravel Queue Worker（Supervisor 守護，失敗重試 3 次）',
+ 'arch.queue.d':'Web Worker 工作佇列：ARIMA／GARCH 於背景執行，不阻塞介面',
+ 'arch.back.p':'Laravel 10（PHP 8.2）RESTful API、Repository Pattern，BlackScholes／Volatility／Prediction 三個 Service',
+ 'arch.back.d':'同樣三個 Service，以頁面內模組實作',
+ 'arch.ana.p':'Python 3.10：statsmodels（ARIMA、GARCH）、TensorFlow 2.x（LSTM）、Brent 隱含波動率求解',
+ 'arch.ana.d':'以 JavaScript 實作 ADF 檢定＋AIC 選模 ARIMA、GARCH(1,1) 最大概似估計與 Brent 法；LSTM 以 TensorFlow.js 訓練',
+ 'arch.front.p':'Vue 3 + Vuetify 3 + Chart.js 儀表板','arch.front.d':'Chart.js 儀表板（即本頁）',
+ 'hyp.h3':'研究假設與驗證位置','hyp.th1':'假設','hyp.th2':'即時驗證',
+ 'hyp.h1':'規則式 ETL 可無錯誤匯入證交所與期交所資料',
+ 'hyp.h2':"等權重集成模型優於單一模型，且 Theil's U < 1",
+ 'hyp.h3x':'背景工作程序可維持介面即時回應',
+ 'hyp.h1e':'<a href="#etl" data-go="etl">ETL 資料管線</a>：匯入紀錄與例外數',
+ 'hyp.h2e':'<a href="#forecast" data-go="forecast">機器學習預測</a>：指標表',
+ 'hyp.h3e':'<a href="#forecast" data-go="forecast">機器學習預測</a>：介面延遲量測',
+ 'pap.h3':'論文發表結果','pap.pill':'台積電 2330 · 2023 年樣本',
+ 'pap.note':'以上為論文發表的數據（Table 4）。「機器學習預測」分頁會以本頁載入的 2024 年至今資料重新執行相同模型，因此數字會不同。',
+ 'th.model':'模型','th.dir':'方向準確率',
+ 'm.rw':'隨機漫步','m.lstm60':'LSTM（60 日）','m.ens':'等權重集成','m.ensOf':'集成（{list}）','m.ensPart':'集成（部分）',
+ 'etl.p':'交易所資料使用民國年日期、舊版報表為 Big5 編碼、數字含千分位逗號，未成交合約以破折號表示。以下三條轉換規則會在分析前套用到每一筆原始資料。',
+ 'etl.s1':'日期轉換','etl.s1n':'西元年 = 民國年 + 1911，輸出 ISO 8601 格式。',
+ 'etl.s2n':'期交所舊版報表以 Big5 解碼，避免中文欄位亂碼。',
+ 'etl.s3':'數值清理','etl.s3n':'移除千分位與正負號；破折號占位轉為 NULL。',
+ 'etl.log':'匯入紀錄','etl.c1':'來源','etl.c2':'API 端點','etl.c3':'原始筆數','etl.c4':'已匯入','etl.c5':'民國日期轉換','etl.c6':'設為 NULL','etl.c7':'例外',
+ 'etl.ok':'H1 成立：0 個例外','etl.bad':'{n} 個例外',
+ 'etl.try':'試算一筆原始資料','etl.fmt':'證交所 STOCK_DAY 格式',
+ 'etl.tryn':'修改原始資料列後執行 ETL。欄位：日期、成交股數、成交金額、開盤、最高、最低、收盤、漲跌價差、成交筆數。',
+ 'etl.run':'執行 ETL','etl.ex':'載入未成交範例',
+ 'etl.res':'// 已轉換 {roc} 個民國日期，設定 {nulls} 個 NULL',
+ 'etl.rej':'已拒絕：{msg}\n正式環境的管線會記錄這筆資料並繼續處理。',
+ 'b5.h3':'Big5 解碼','b5.lbl':'期交所舊版 CSV',
+ 'b5.note':'以今日 TXO 報價組成期交所格式的 CSV 並以 Big5 編碼。下方以正確字元集解碼，並對照誤用 UTF-8 讀取的結果。',
+ 'b5.raw':'原始位元組（十六進位）','b5.good':'以 Big5 解碼（管線做法）','b5.bad':'誤以 UTF-8 讀取（一般載入程式的錯誤結果）','b5.none':'（此瀏覽器不支援 Big5 解碼）',
+ 'mk.p':'三檔指標個股的每日 OHLCV，含 5 日與 20 日均線，以及 20／60 日歷史波動率。漲跌顏色依台灣慣例：紅漲綠跌。',
+ 'csv':'匯出 CSV','mk.close':'收盤價','mk.hv':'歷史波動率（年化）',
+ 'r.1M':'1 個月','r.3M':'3 個月','r.6M':'6 個月','r.1Y':'1 年','r.All':'全部',
+ 'mk.date':'日期','mk.vol':'成交股數','mk.hi':'{r}最高','mk.lo':'{r}最低','mk.lots':'張（1,000 股）',
+ 'name.2330':'台積電','name.2317':'鴻海','name.2454':'聯發科',
+ 'op.p':'TXO 結算價取自期交所，以加權指數收盤價為標的、無風險利率 r = 1.75%（央行定存利率）定價。每個合約的隱含波動率以 Brent 法在 σ ∈ [0.001, 5.0] 區間求解，容許誤差 10⁻⁴。點選 T 型報價表任一列即可帶入計算機。',
+ 'bs.h3':'Black–Scholes 計算機','bs.S':'現貨 S','bs.K':'履約價 K','bs.r':'利率 r (%)','bs.T':'距到期天數','bs.v':'波動率 σ (%)',
+ 'bs.from':'σ 來源','bs.atm':'價平 IV','bs.hv':'加權指數 HV20','bs.price':'價格','bs.theta':'Theta／日',
+ 'bs.needg':'請先執行預測模型',
+ 'src.hv':'σ = 加權指數 20 日歷史波動率','src.garch':'σ = GARCH(1,1)，{code}','src.atm':'σ = 價平 IV，K {k}','src.iv':'σ = {k} {side}的 IV',
+ 'call':'買權','put':'賣權',
+ 'iv.h3':'隱含波動率求解','iv.lbl':'Brent 法 vs 二分法','iv.type':'選擇權類型','iv.px':'市場價格',
+ 'iv.note':'每次迭代的定價絕對誤差（對數刻度），使用計算機中的 S、K、r 與天數。',
+ 'iv.iv':'隱含波動率','iv.bit':'Brent 迭代次數','iv.qit':'二分法迭代次數','iv.ms':'Brent 求解時間','iv.res':'結果','iv.none':'在 [0.1%, 500%] 內找不到符合此價格的 σ',
+ 'iv.bis':'二分法','iv.iter':'迭代次數',
+ 'tq.h3':'TXO T 型報價表','tq.n':'履約價範圍','tq.exp':'到期日 {d}','tq.days':'{n} 天','tq.spot':'現貨 {s}','tq.atm':'價平 IV {v}',
+ 'tq.call':'買權 Call','tq.put':'賣權 Put','tq.strike':'履約價','tq.oi':'未平倉','tq.vol':'成交量','tq.settle':'結算價','tq.theo':'理論價',
+ 'tq.note':'底色標示價內合約。理論價為依計算機 σ 計算的 Black–Scholes 價格。若結算價低於內含價值，任何 σ 都無法重現，IV 即留空。',
+ 'sm.h3':'波動率微笑','sm.e1':'近月','sm.e2':'次月','sm.e3':'第三個月','sm.d':'{n} 天',
+ 'sm.note':'僅取價外合約（現貨以下用賣權、以上用買權），結算價 ≥ 2 點，履約價在現貨 ±20% 內。',
+ 'sm.x':'履約價','sm.y':'隱含波動率',
+ 'se.p':'依成交量與未平倉量計算的賣買權比（Put/Call Ratio）、各履約價未平倉分布，以及結算時買方獲利最少的最大痛點（Max Pain）履約價。',
+ 'se.tile':'TXO {m} · {d} 到期','se.ratio':'賣買權未平倉比（{p} / {c}）','se.pcv':'賣買權成交量比','se.mp':'最大痛點履約價','se.dist':'與現貨距離',
+ 'se.oi':'各履約價未平倉量','se.coi':'買權未平倉','se.poi':'賣權未平倉','spot':'現貨','se.y':'未平倉量（口）',
+ 'fc.p':'以時間順序 80/20 切分，預測次一交易日收盤價。ARIMA 階數由 ADF 檢定與 AIC（p, q ∈ {0…5}）選定；GARCH(1,1) 以最大概似法估計；LSTM 採用論文 Table 3 的設定；集成模型為等權重平均。',
+ 'fc.csv':'匯出預測 CSV','fc.stat':'統計模型','fc.lstm':'雙層 LSTM',
+ 'p.queued':'排隊中','p.run':'背景執行中','p.done':'完成','p.fail':'失敗','p.err':'錯誤',
+ 'fc.adf':'ADF 統計量（5% 臨界值 −2.86）','fc.order':'選定 ARIMA (p, d, q)','fc.runner':'次佳階數','fc.pers':'持續性 α+β','fc.sig':'次日 σ（年化）→ 選擇權定價','fc.ms':'背景工作耗時',
+ 'fc.ep':'最大訓練輪數','fc.ep15':'15（快速）','fc.ep100':'100（論文設定）','fc.train':'訓練 LSTM',
+ 'fc.lnote':'2 層 × 50 個 LSTM 單元、Dropout 0.2、60 日視窗、Adam（學習率 0.001）、MSE、批次 32、Early Stopping patience 10，MinMax 縮放僅以訓練集擬合。權重為隨機初始化，每次結果會略有差異。',
+ 'l.none':'尚未訓練','l.prep':'準備中','l.ep':'第 {e}/{m} 輪 · 驗證損失 {l}','l.done':'已訓練 · {n} 輪','l.fail':'訓練失敗：{m}','l.tf':'TensorFlow.js 載入失敗',
+ 'l.train':'訓練損失','l.val':'驗證損失','l.epoch':'訓練輪數',
+ 'fc.test':'測試集預測','fc.actual':'實際值','fc.band':'ARIMA 95% 區間',
+ 'fc.acc':'測試集準確度','fc.span':'{a} → {b} · {n} 天',
+ 'h2.need':'請訓練 LSTM 以完成三模型集成並檢驗 H2。',
+ 'h2.ok':"H2 在此樣本成立：集成模型 RMSE 最低，且 Theil's U = {u} < 1。",
+ 'h2.no':'H2 在此樣本未完全成立：RMSE 最低者為 {best}{ens}。結果會隨期間而異，論文使用的是 2023 年資料。',
+ 'h2.ens':"；集成模型 Theil's U = {u}",
+ 'fc.next':'下一個交易日','fc.after':'{d} 之後 · 最新收盤 {p}','fc.fclose':'預測收盤價','fc.vs':'與最新收盤差','fc.running':'計算中…',
+ 'h3.stat':'ARIMA／GARCH 執行期間最長介面延遲','h3.lstm':'LSTM 訓練期間最長介面延遲','h3.ep':'LSTM 訓練輪數／運算後端',
+ 'foot':'研究展示用途，不構成投資建議。資料來源：臺灣證券交易所與臺灣期貨交易所 OpenAPI，每個交易日後自動更新；最後更新 {d}。模型皆在瀏覽器端執行，資料不會離開您的瀏覽器。'
+},
+ko:{
+ 'doc.title':'대만 주식·옵션 분석 시스템',
+ 'title.h1':'대만 주식<span>·</span>옵션 분석 시스템',
+ 'title.sub':'대만증권거래소(TWSE) 주식과 대만선물거래소(TAIFEX) 지수옵션(TXO)을 위한 핀테크 분석·머신러닝 플랫폼',
+ 'title.authors':'Chia-Chun Kang(Cheng Shiu University), Yu-Cheng Li·Yu-De He(Shu-Te University)',
+ 'st.eq':'주식 데이터','st.txo':'TXO 체인','st.upd':'최종 갱신','st.lang':'언어',
+ 'tab.overview':'개요','tab.etl':'ETL 파이프라인','tab.market':'주가 대시보드','tab.options':'옵션 분석','tab.sentiment':'TXO 시장 심리','tab.forecast':'머신러닝 예측',
+ 'ov.h2':'실제로 작동하는 플랫폼 데모',
+ 'ov.p':'이 페이지의 모든 수치는 TWSE·TAIFEX OpenAPI에서 내려받은 실제 거래 데이터로 브라우저에서 직접 계산됩니다. 논문의 ETL 규칙, Black–Scholes 가격 결정과 Brent 방법 내재변동성 계산, ARIMA·GARCH(1,1)·2층 LSTM·동일가중 앙상블 예측을 실제로 실행합니다.',
+ 'ov.t1':'일별 주식 레코드','ov.t1d':'2330 · 2317 · 2454','ov.t2':'가격 산출된 TXO 계약','ov.t2d':'월물 {n}개 · IV·그릭스','ov.t3':'TAIEX 현물','ov.t3d':'{d} 종가','ov.t4':'ETL 예외','ov.t4d':'전체 원시 행 기준',
+ 'arch.h3':'아키텍처: 논문 설계와 본 데모 비교','arch.layer':'계층','arch.prod':'운영 환경(논문)','arch.demo':'본 라이브 데모',
+ 'arch.data':'데이터','arch.queue':'큐','arch.back':'백엔드','arch.ana':'분석','arch.front':'프런트엔드',
+ 'arch.data.p':'TWSE·TAIFEX OpenAPI, 매일 예약 수집(13:30 주식, 13:45 옵션)',
+ 'arch.data.d':'매 거래일 후 예약 작업이 거래소 원시 응답을 갱신하고, 페이지를 열 때마다 ETL이 다시 적재',
+ 'arch.queue.p':'Redis 7.0 + Laravel Queue 워커(Supervisor 관리, 최대 3회 재시도)',
+ 'arch.queue.d':'Web Worker 작업 큐: ARIMA/GARCH를 UI 스레드 밖에서 실행',
+ 'arch.back.p':'Laravel 10(PHP 8.2) REST API, 리포지토리 패턴, BlackScholes/Volatility/Prediction 서비스',
+ 'arch.back.d':'동일한 세 서비스를 페이지 내 모듈로 구현',
+ 'arch.ana.p':'Python 3.10: statsmodels(ARIMA, GARCH), TensorFlow 2.x(LSTM), Brent IV 솔버',
+ 'arch.ana.d':'ADF 검정+AIC 기반 ARIMA, GARCH(1,1) 최대우도추정, Brent 방법을 JavaScript로 구현; LSTM은 TensorFlow.js로 학습',
+ 'arch.front.p':'Vue 3 + Vuetify 3 + Chart.js 대시보드','arch.front.d':'Chart.js 대시보드(이 페이지)',
+ 'hyp.h3':'연구 가설과 확인 위치','hyp.th1':'가설','hyp.th2':'실시간 근거',
+ 'hyp.h1':'규칙 기반 ETL이 TWSE·TAIFEX 데이터를 오류 없이 적재',
+ 'hyp.h2':"동일가중 앙상블이 단일 모델보다 우수하며 Theil's U < 1",
+ 'hyp.h3x':'백그라운드 워커가 UI 응답성을 유지',
+ 'hyp.h1e':'<a href="#etl" data-go="etl">ETL 파이프라인</a>: 적재 로그, 예외 수',
+ 'hyp.h2e':'<a href="#forecast" data-go="forecast">머신러닝 예측</a>: 지표 표',
+ 'hyp.h3e':'<a href="#forecast" data-go="forecast">머신러닝 예측</a>: UI 프레임 지연 측정',
+ 'pap.h3':'논문 보고 결과','pap.pill':'TSMC 2330 · 2023년 표본',
+ 'pap.note':"위 수치는 논문에 발표된 값(Table 4)입니다. '머신러닝 예측' 탭은 이 페이지에 적재된 2024년 이후 데이터로 같은 모델을 다시 실행하므로 수치가 다릅니다.",
+ 'th.model':'모델','th.dir':'방향 정확도',
+ 'm.rw':'랜덤워크','m.lstm60':'LSTM(60일)','m.ens':'동일가중 앙상블','m.ensOf':'앙상블({list})','m.ensPart':'앙상블(일부)',
+ 'etl.p':'거래소 데이터는 중화민국(ROC) 연호 날짜, 구형 보고서의 Big5 인코딩, 천 단위 구분 기호, 미체결 계약의 대시(-) 표기를 사용합니다. 분석 전에 아래 세 가지 변환 규칙을 모든 원시 행에 적용합니다.',
+ 'etl.s1':'날짜 변환','etl.s1n':'서기 연도 = ROC 연도 + 1911, ISO 8601 형식으로 출력.',
+ 'etl.s2n':'TAIFEX 구형 보고서를 Big5로 디코딩해 중국어 필드가 깨지지 않게 합니다.',
+ 'etl.s3':'숫자 정제','etl.s3n':'구분 기호와 부호를 제거하고, 대시 자리표시자는 NULL로 변환.',
+ 'etl.log':'적재 로그','etl.c1':'출처','etl.c2':'엔드포인트','etl.c3':'원시 행','etl.c4':'적재됨','etl.c5':'ROC 날짜 변환','etl.c6':'NULL 처리','etl.c7':'예외',
+ 'etl.ok':'H1 성립: 예외 0건','etl.bad':'예외 {n}건',
+ 'etl.try':'원시 행 직접 실행','etl.fmt':'TWSE STOCK_DAY 형식',
+ 'etl.tryn':'원시 행을 수정한 뒤 ETL을 실행하세요. 필드: 날짜, 거래주식수, 거래대금, 시가, 고가, 저가, 종가, 등락, 거래건수.',
+ 'etl.run':'ETL 실행','etl.ex':'미체결 예시 불러오기',
+ 'etl.res':'// ROC 날짜 {roc}개 변환, NULL {nulls}개 설정',
+ 'etl.rej':'거부됨: {msg}\n운영 파이프라인은 이 행을 기록하고 계속 진행합니다.',
+ 'b5.h3':'Big5 디코딩','b5.lbl':'TAIFEX 구형 CSV 행',
+ 'b5.note':'오늘의 TXO 데이터로 만든 TAIFEX 형식 CSV 행을 Big5로 인코딩했습니다. 같은 바이트를 올바른 문자셋으로 디코딩한 결과와 UTF-8로 잘못 읽은 결과를 비교합니다.',
+ 'b5.raw':'원시 바이트(16진수)','b5.good':'Big5로 디코딩(파이프라인)','b5.bad':'UTF-8로 잘못 읽음(단순 로더의 오류)','b5.none':'(이 브라우저는 Big5 디코더를 지원하지 않습니다)',
+ 'mk.p':'3개 대표 종목의 일별 OHLCV와 5일·20일 이동평균, 20/60일 역사적 변동성. 등락 색상은 대만 관례(빨강 상승, 초록 하락)를 따릅니다.',
+ 'csv':'CSV 내보내기','mk.close':'종가','mk.hv':'역사적 변동성(연율화)',
+ 'r.1M':'1개월','r.3M':'3개월','r.6M':'6개월','r.1Y':'1년','r.All':'전체',
+ 'mk.date':'날짜','mk.vol':'거래량(주)','mk.hi':'{r} 최고','mk.lo':'{r} 최저','mk.lots':'로트(1,000주)',
+ 'name.2330':'TSMC','name.2317':'폭스콘','name.2454':'미디어텍',
+ 'op.p':'TAIFEX의 TXO 정산가를 TAIEX 종가와 r = 1.75%(대만 중앙은행 예금금리)로 평가합니다. 각 계약의 내재변동성은 σ ∈ [0.001, 5.0] 구간에서 허용오차 10⁻⁴로 Brent 방법을 이용해 구합니다. T자형 호가표의 행을 클릭하면 계산기에 입력됩니다.',
+ 'bs.h3':'Black–Scholes 계산기','bs.S':'현물 S','bs.K':'행사가 K','bs.r':'금리 r (%)','bs.T':'만기까지 일수','bs.v':'변동성 σ (%)',
+ 'bs.from':'σ 설정 기준','bs.atm':'ATM IV','bs.hv':'TAIEX HV20','bs.price':'가격','bs.theta':'Theta /일',
+ 'bs.needg':'먼저 예측 모델을 실행하세요',
+ 'src.hv':'σ = TAIEX 20일 HV','src.garch':'σ = GARCH(1,1), {code}','src.atm':'σ = ATM IV, K {k}','src.iv':'σ = {k} {side} IV',
+ 'call':'콜','put':'풋',
+ 'iv.h3':'내재변동성 솔버','iv.lbl':'Brent vs 이분법','iv.type':'옵션 유형','iv.px':'시장 가격',
+ 'iv.note':'반복별 가격 절대오차(로그 스케일). 계산기의 S, K, r, 일수를 사용합니다.',
+ 'iv.iv':'내재변동성','iv.bit':'Brent 반복 횟수','iv.qit':'이분법 반복 횟수','iv.ms':'Brent 계산 시간','iv.res':'결과','iv.none':'[0.1%, 500%] 범위에서 이 가격을 재현하는 σ가 없습니다',
+ 'iv.bis':'이분법','iv.iter':'반복',
+ 'tq.h3':'TXO T자형 호가표','tq.n':'행사가 범위','tq.exp':'만기 {d}','tq.days':'{n}일','tq.spot':'현물 {s}','tq.atm':'ATM IV {v}',
+ 'tq.call':'콜 Call','tq.put':'풋 Put','tq.strike':'행사가','tq.oi':'미결제','tq.vol':'거래량','tq.settle':'정산가','tq.theo':'이론가',
+ 'tq.note':'음영은 내가격(ITM) 계약입니다. 이론가는 계산기의 σ로 구한 Black–Scholes 가격입니다. 정산가가 내재가치보다 낮으면 어떤 σ로도 재현할 수 없어 IV를 비워 둡니다.',
+ 'sm.h3':'변동성 스마일','sm.e1':'최근월','sm.e2':'차월','sm.e3':'3번째 월물','sm.d':'{n}일',
+ 'sm.note':'외가격 계약만 사용(현물 아래는 풋, 위는 콜), 정산가 2포인트 이상, 행사가는 현물 ±20% 이내.',
+ 'sm.x':'행사가','sm.y':'내재변동성',
+ 'se.p':'거래량·미결제약정 기준 풋/콜 비율, 행사가별 미결제약정 분포, 그리고 정산 시 옵션 매수자의 수익이 가장 적은 맥스 페인(Max Pain) 행사가.',
+ 'se.tile':'TXO {m} · {d} 만기','se.ratio':'풋/콜 미결제 비율({p} / {c})','se.pcv':'풋/콜 거래량 비율','se.mp':'맥스 페인 행사가','se.dist':'현물 대비 거리',
+ 'se.oi':'행사가별 미결제약정','se.coi':'콜 미결제','se.poi':'풋 미결제','spot':'현물','se.y':'미결제약정(계약)',
+ 'fc.p':'시간순 80/20 분할로 다음 거래일 종가를 1단계 예측합니다. ARIMA 차수는 ADF 검정과 AIC(p, q ∈ {0…5})로 선택하고, GARCH(1,1)은 최대우도로 추정하며, LSTM은 논문 Table 3 설정을, 앙상블은 동일가중 평균을 사용합니다.',
+ 'fc.csv':'예측 CSV 내보내기','fc.stat':'통계 모델','fc.lstm':'2층 LSTM',
+ 'p.queued':'대기 중','p.run':'워커에서 실행 중','p.done':'완료','p.fail':'실패','p.err':'오류',
+ 'fc.adf':'ADF 통계량(5% 임계값 −2.86)','fc.order':'선택된 ARIMA (p, d, q)','fc.runner':'차순위 차수','fc.pers':'지속성 α+β','fc.sig':'다음 날 σ(연율화) → 옵션 가격 계산','fc.ms':'워커 작업 시간',
+ 'fc.ep':'최대 에포크','fc.ep15':'15(빠름)','fc.ep100':'100(논문)','fc.train':'LSTM 학습',
+ 'fc.lnote':'LSTM 2층 × 50유닛, 드롭아웃 0.2, 60일 윈도, Adam(학습률 0.001), MSE, 배치 32, 조기 종료 patience 10, MinMax 스케일링은 학습 세트로만 적합. 가중치가 무작위로 초기화되어 실행마다 결과가 조금씩 다릅니다.',
+ 'l.none':'미학습','l.prep':'준비 중','l.ep':'에포크 {e}/{m} · 검증 손실 {l}','l.done':'학습 완료 · {n} 에포크','l.fail':'학습 실패: {m}','l.tf':'TensorFlow.js 로드 실패',
+ 'l.train':'학습 손실','l.val':'검증 손실','l.epoch':'에포크',
+ 'fc.test':'테스트 세트 예측','fc.actual':'실제값','fc.band':'ARIMA 95% 구간',
+ 'fc.acc':'테스트 세트 정확도','fc.span':'{a} → {b} · {n}일',
+ 'h2.need':'LSTM을 학습시켜 3개 모델 앙상블을 완성하고 H2를 검증하세요.',
+ 'h2.ok':"이 표본에서 H2 성립: 앙상블의 RMSE가 가장 낮고 Theil's U = {u} < 1.",
+ 'h2.no':'이 표본에서 H2가 완전히 성립하지 않음: RMSE 최저 모델은 {best}{ens}. 결과는 기간에 따라 달라지며, 논문은 2023년 데이터를 사용했습니다.',
+ 'h2.ens':"; 앙상블 Theil's U = {u}",
+ 'fc.next':'다음 거래일','fc.after':'{d} 이후 · 최근 종가 {p}','fc.fclose':'예측 종가','fc.vs':'최근 종가 대비','fc.running':'계산 중…',
+ 'h3.stat':'ARIMA/GARCH 실행 중 최장 UI 프레임 지연','h3.lstm':'LSTM 학습 중 최장 UI 프레임 지연','h3.ep':'LSTM 에포크 수 / 백엔드',
+ 'foot':'연구 시연용이며 투자 조언이 아닙니다. 데이터: 대만증권거래소·대만선물거래소 OpenAPI, 매 거래일 후 자동 갱신; 최종 갱신 {d}. 모델은 브라우저에서 실행되며 데이터는 브라우저 밖으로 전송되지 않습니다.'
+}};
+const HTML_LANG={zh:'zh-Hant',en:'en',ko:'ko'};
+function pickLang(){const s=store('lang');if(s&&I18N[s])return s;const n=(navigator.language||'').toLowerCase();return n.startsWith('zh')?'zh':n.startsWith('ko')?'ko':'en'}
+let LANG='en';
+function t(k,v){let s=I18N[LANG][k];if(s==null)s=I18N.en[k];if(s==null)return k;return v?s.replace(/\{(\w+)\}/g,(m,n)=>v[n]!=null?v[n]:m):s}
+/* elements whose text is a remembered key (pills, labels set from code) */
+function tx(el,key,vars,cls){el._i18n={key,vars};el.textContent=t(key,vars);if(cls!=null)el.className=cls}
+function applyStatic(){
+  document.documentElement.lang=HTML_LANG[LANG];document.title=t('doc.title');
+  $$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n)});
+  $$('[data-i18n-html]').forEach(el=>{el.innerHTML=t(el.dataset.i18nHtml)});
+  $$('#arch .p').forEach(el=>el.dataset.h=t('arch.prod'));$$('#arch .d').forEach(el=>el.dataset.h=t('arch.demo'));
+  $$('#lang button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===LANG));
+  $$('*').forEach(el=>{if(el._i18n)el.textContent=t(el._i18n.key,el._i18n.vars)});
+}
+function setLang(l){if(!I18N[l]||l===LANG&&document.documentElement.lang===HTML_LANG[l])return;LANG=l;store('lang',l);applyStatic();
+  if(DB.log.length){renderOverview();renderETL(true);
+    if(seen.market)renderMarket();if(seen.options)relabelOptions();if(seen.sentiment)renderSentiment();if(seen.forecast){stockSeg($('#fc-stock'),FC.code,v=>{FC.code=v;runStats()});statPanel();drawForecast()}}}
+
+
+/* ---------- ETL (paper §4.1) ---------- */
+const ETL={
+  roc(s){const m=/^\s*(\d{2,3})\/(\d{1,2})\/(\d{1,2})\s*$/.exec(s);if(!m)throw new Error('Unparseable ROC date: '+s);
+    return `${+m[1]+1911}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`},
+  num(s,stat){if(s==null)return null;let t=String(s).trim();
+    if(t===''||t==='--'||t==='-'||t==='---'){if(stat)stat.nulls++;return null}
+    t=t.replace(/,/g,'').replace(/^\+/,'').replace(/^X/,'');const v=parseFloat(t);
+    if(!isFinite(v)){if(stat)stat.nulls++;return null}return v},
+  cp(s){if(s==='買權'||s==='Call'||s==='C')return 'C';if(s==='賣權'||s==='Put'||s==='P')return 'P';throw new Error('Unknown call/put flag: '+s)},
+  stockRow(r,stat){const date=this.roc(r[0]);stat.roc++;
+    return{date,volume:this.num(r[1],stat),value:this.num(r[2],stat),open:this.num(r[3],stat),high:this.num(r[4],stat),low:this.num(r[5],stat),close:this.num(r[6],stat),change:this.num(r[7],stat),trades:this.num(r[8],stat)}},
+};
+const DB={stocks:{},taiex:[],txo:[],log:[]};const ORDER=['2330','2317','2454'];
+function ingest(){
+  for(const code of ORDER){const s=RAW.stocks[code];
+    const st={src:`TWSE ${code}`,ep:'exchangeReport/STOCK_DAY',raw:s.rows.length,loaded:0,roc:0,nulls:0,exc:0};
+    const rows=[];for(const r of s.rows){try{const o=ETL.stockRow(r,st);if(o.close!=null){rows.push(o);st.loaded++}}catch(e){st.exc++}}
+    rows.sort((a,b)=>a.date<b.date?-1:1);DB.stocks[code]={name:s.name,en:s.en,rows};DB.log.push(st);
+  }
+  {const st={src:'TWSE TAIEX',ep:'indicesReport/MI_5MINS_HIST',raw:RAW.taiex.length,loaded:0,roc:0,nulls:0,exc:0};
+    for(const r of RAW.taiex){try{const d=ETL.roc(r[0]);st.roc++;const c=ETL.num(r[4],st);if(c!=null){DB.taiex.push({date:d,close:c});st.loaded++}}catch(e){st.exc++}}
+    DB.taiex.sort((a,b)=>a.date<b.date?-1:1);DB.log.push(st);}
+  {const st={src:'TAIFEX TXO',ep:'v1/DailyMarketReportOpt',raw:RAW.txo.rows.length,loaded:0,roc:0,nulls:0,exc:0};
+    for(const r of RAW.txo.rows){try{DB.txo.push({exp:r[0],K:ETL.num(r[1]),cp:ETL.cp(r[2]),last:ETL.num(r[3],st),vol:ETL.num(r[4],st),settle:ETL.num(r[5],st),oi:ETL.num(r[6],st),bid:ETL.num(r[7],st),ask:ETL.num(r[8],st)});st.loaded++}catch(e){st.exc++}}
+    DB.log.push(st);}
+}
+
+/* ---------- Black–Scholes & Brent (paper §5) ---------- */
+function erf(x){const s=Math.sign(x);x=Math.abs(x);const t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y}
+const N=x=>0.5*(1+erf(x/Math.SQRT2)), Np=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+function bs(S,K,r,T,v,cp){const sq=Math.sqrt(T),d1=(Math.log(S/K)+(r+v*v/2)*T)/(v*sq),d2=d1-v*sq,df=Math.exp(-r*T);
+  const call=S*N(d1)-K*df*N(d2),put=K*df*N(-d2)-S*N(-d1);
+  const gamma=Np(d1)/(S*v*sq),vega=S*Np(d1)*sq;
+  const thC=-S*Np(d1)*v/(2*sq)-r*K*df*N(d2),thP=-S*Np(d1)*v/(2*sq)+r*K*df*N(-d2);
+  return cp==='P'?{price:put,delta:N(d1)-1,gamma,theta:thP,vega}:{price:call,delta:N(d1),gamma,theta:thC,vega}}
+function brent(f,a,b,tol=1e-4,maxIt=100,trace){let fa=f(a),fb=f(b);if(fa*fb>0)return null;
+  if(Math.abs(fa)<Math.abs(fb)){[a,b]=[b,a];[fa,fb]=[fb,fa]}let c=a,fc=fa,mflag=true,d=0,it=0;
+  while(it<maxIt){it++;let s;
+    if(fa!==fc&&fb!==fc)s=a*fb*fc/((fa-fb)*(fa-fc))+b*fa*fc/((fb-fa)*(fb-fc))+c*fa*fb/((fc-fa)*(fc-fb));else s=b-fb*(b-a)/(fb-fa);
+    const lo=(3*a+b)/4;if(!((s>Math.min(lo,b)&&s<Math.max(lo,b)))||(mflag&&Math.abs(s-b)>=Math.abs(b-c)/2)||(!mflag&&Math.abs(s-b)>=Math.abs(c-d)/2)||(mflag&&Math.abs(b-c)<tol)||(!mflag&&Math.abs(c-d)<tol)){s=(a+b)/2;mflag=true}else mflag=false;
+    const fs=f(s);d=c;c=b;fc=fb;if(fa*fs<0){b=s;fb=fs}else{a=s;fa=fs}
+    if(Math.abs(fa)<Math.abs(fb)){[a,b]=[b,a];[fa,fb]=[fb,fa]}
+    if(trace)trace.push(Math.abs(fb));
+    if(Math.abs(fb)<tol||Math.abs(b-a)<tol*1e-3)break}
+  return{x:b,it}}
+function bisect(f,a,b,tol=1e-4,maxIt=200,trace){let fa=f(a);if(fa*f(b)>0)return null;let it=0,m=a;
+  while(it<maxIt){it++;m=(a+b)/2;const fm=f(m);if(trace)trace.push(Math.abs(fm));if(Math.abs(fm)<tol)break;if(fa*fm<0)b=m;else{a=m;fa=fm}}return{x:m,it}}
+const R=0.0175;
+function iv(price,S,K,r,T,cp,trace){if(price==null||price<=0)return null;return brent(v=>bs(S,K,r,T,v,cp).price-price,0.001,5.0,1e-4,100,trace)}
+
+/* ---------- derived data ---------- */
+function thirdWed(ym){const y=+ym.slice(0,4),m=+ym.slice(4,6)-1,d=new Date(Date.UTC(y,m,1));const off=(3-d.getUTCDay()+7)%7;return new Date(Date.UTC(y,m,1+off+14))}
+const isoD=d=>d.toISOString().slice(0,10);
+let OPT={};
+function buildOptions(){
+  const dataDate=RAW.txo.date.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
+  const tx=DB.taiex.filter(r=>r.date<=dataDate);const S=tx[tx.length-1].close,Sdate=tx[tx.length-1].date;
+  const hv=hvSeries(DB.taiex.map(r=>r.close),20);const hv20=hv[hv.length-1];
+  const exps=[...new Set(DB.txo.map(o=>o.exp))].sort();
+  const chains={};
+  for(const e of exps){const ed=thirdWed(e),days=(ed-new Date(dataDate+'T00:00:00Z'))/864e5,T=days/365;
+    const map=new Map();for(const o of DB.txo.filter(o=>o.exp===e)){if(!map.has(o.K))map.set(o.K,{K:o.K});map.get(o.K)[o.cp]=o}
+    const rows=[...map.values()].filter(r=>r.C&&r.P).sort((a,b)=>a.K-b.K);
+    for(const r of rows)for(const cp of ['C','P']){const o=r[cp];const s=iv(o.settle,S,r.K,R,T,cp);o.iv=s?s.x:null;o.delta=o.iv?bs(S,r.K,R,T,o.iv,cp).delta:null}
+    let atm=rows[0];for(const r of rows)if(Math.abs(r.K-S)<Math.abs(atm.K-S))atm=r;
+    const atmIV=[atm.C.iv,atm.P.iv].filter(v=>v);chains[e]={exp:e,expiry:isoD(ed),days,T,rows,atm:atm.K,atmIV:atmIV.reduce((a,b)=>a+b,0)/atmIV.length};}
+  OPT={S,Sdate,dataDate,hv20,exps,chains};
+}
+function hvSeries(P,w){const r=[];for(let i=1;i<P.length;i++)r.push(Math.log(P[i]/P[i-1]));const out=new Array(P.length).fill(null);
+  for(let i=w;i<P.length;i++){const s=r.slice(i-w,i),m=s.reduce((a,b)=>a+b,0)/w;out[i]=Math.sqrt(s.reduce((a,b)=>a+(b-m)**2,0)/(w-1)*252)}return out}
+const ma=(P,w)=>P.map((v,i)=>i<w-1?null:P.slice(i-w+1,i+1).reduce((a,b)=>a+b,0)/w);
+const expLabel=e=>`${e.slice(0,4)}/${e.slice(4)}`;
+
+/* ---------- charts ---------- */
+const charts={};
+function themeChart(){Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--line');Chart.defaults.font.family=css('--f-body');Chart.defaults.font.size=11}
+function mk(id,cfgFn){if(typeof Chart==='undefined')return;if(charts[id])charts[id].destroy();themeChart();const cfg=cfgFn();charts[id]=new Chart(document.getElementById(id),cfg);charts[id]._fn=cfgFn}
+function rethemeAll(){for(const id in charts){const f=charts[id]._fn;mk(id,f)}}
+const baseOpts=(extra={})=>Object.assign({responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{display:false},tooltip:{backgroundColor:css('--surface'),titleColor:css('--ink'),bodyColor:css('--ink'),borderColor:css('--line'),borderWidth:1,bodyFont:{family:css('--f-mono')}}},
+  scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}},y:{grid:{color:css('--line')},ticks:{maxTicksLimit:6}}}},extra);
+const line=(label,data,color,o={})=>Object.assign({label,data,borderColor:color,backgroundColor:color,borderWidth:1.6,pointRadius:0,tension:0,spanGaps:true},o);
+
+/* ---------- tabs ---------- */
+const TABS=['overview','etl','market','options','sentiment','forecast'];const seen={};
+function show(t){if(!TABS.includes(t))t='overview';
+  for(const x of TABS){$('#tab-'+x).hidden=x!==t;const b=$(`nav.tabs [data-tab="${x}"]`);b.setAttribute('aria-selected',x===t)}
+  store('tab',t);if(location.hash!=='#'+t)history.replaceState(null,'','#'+t);
+  if(!seen[t]){seen[t]=1;({market:renderMarket,options:renderOptions,sentiment:renderSentiment,forecast:startForecast})[t]?.()}
+  window.scrollTo({top:0});}
+$$('nav.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+document.addEventListener('click',e=>{const a=e.target.closest('[data-go]');if(a){e.preventDefault();show(a.dataset.go)}});
+function seg(el,items,cur,on){el.innerHTML=items.map(([v,l])=>`<button data-v="${esc(v)}" aria-pressed="${v===cur}">${l}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));on(b.dataset.v)}}
+
+/* ---------- downloads ---------- */
+let DL=null;
+async function saveCSV(name,rows){const csv=rows.map(r=>r.map(v=>v==null?'':String(v)).join(',')).join('\n');
+  if(DL){try{await DL.save({filename:name,data:csv})}catch(e){}return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const eq=Object.values(DB.stocks);const first=eq[0].rows[0].date,last=eq[0].rows[eq[0].rows.length-1].date;
+  $('#st-eq').textContent=`${first} → ${last}`;$('#st-txo').textContent=OPT.dataDate;$('#st-upd').textContent=RAW.captured;
+  $('#foot').textContent=t('foot',{d:RAW.captured});
+  const totalEq=eq.reduce((a,s)=>a+s.rows.length,0),exc=DB.log.reduce((a,s)=>a+s.exc,0);
+  const tiles=[
+    [totalEq.toLocaleString(),t('ov.t1'),t('ov.t1d')],
+    [DB.txo.length.toLocaleString(),t('ov.t2'),t('ov.t2d',{n:OPT.exps.length})],
+    [fmt(OPT.S,2),t('ov.t3'),t('ov.t3d',{d:OPT.Sdate})],
+    [String(exc),t('ov.t4'),t('ov.t4d')],
+  ];
+  $('#ov-tiles').innerHTML=tiles.map(([v,l,d])=>`<div class="tile"><span class="label">${l}</span><span class="v">${v}</span><span class="d">${d}</span></div>`).join('');
+}
+
+/* ---------- ETL tab ---------- */
+function renderETL(relabel){
+  const tb=$('#etl-log tbody');const exc=DB.log.reduce((a,s)=>a+s.exc,0);
+  tb.innerHTML=DB.log.map(s=>`<tr><td class="txt">${s.src}</td><td class="txt" style="text-align:left">${s.ep}</td><td>${s.raw.toLocaleString()}</td><td>${s.loaded.toLocaleString()}</td><td>${s.roc?s.roc.toLocaleString():'—'}</td><td>${s.nulls.toLocaleString()}</td><td class="${s.exc?'up':''}">${s.exc}</td></tr>`).join('');
+  tx($('#etl-pill'),exc?'etl.bad':'etl.ok',{n:exc},'pill '+(exc?'bad':'ok'));
+  if(!relabel){const sample=RAW.stocks['2330'].rows[RAW.stocks['2330'].rows.length-1];$('#etl-in').value=JSON.stringify(sample)}
+  runEtlBox();
+  const bytes=Uint8Array.from(atob(RAW.big5),c=>c.charCodeAt(0));
+  $('#b5-bytes').textContent=[...bytes].map(b=>b.toString(16).padStart(2,'0')).join(' ').replace(/((?:\S\S ){24})/g,'$1\n');
+  let good=t('b5.none');try{good=new TextDecoder('big5').decode(bytes)}catch(e){}
+  $('#b5-good').textContent=good;$('#b5-bad').textContent=new TextDecoder('utf-8').decode(bytes);
+  $('#b5-ok').textContent=good.split(',')[0];
+  $('#b5-hex').textContent=[...bytes.slice(0,4)].map(b=>b.toString(16).padStart(2,'0')).join(' ');
+}
+function runEtlBox(){const out=$('#etl-out');
+  try{const r=JSON.parse($('#etl-in').value);if(!Array.isArray(r))throw new Error('Expected a JSON array of strings');
+    const st={roc:0,nulls:0};const o=ETL.stockRow(r,st);out.textContent=JSON.stringify(o,null,2)+'\n\n'+t('etl.res',st)}
+  catch(e){out.textContent=t('etl.rej',{msg:e.message})}}
+$('#etl-run').onclick=runEtlBox;
+$('#etl-ex').onclick=()=>{$('#etl-in').value=JSON.stringify(["115/11/09","--","--","--","--","--","--","X0.00","--",""]);runEtlBox()};
+
+/* ---------- market ---------- */
+let MK={code:'2330',range:'1Y'};
+const RANGES=[['1M',21],['3M',63],['6M',126],['1Y',252],['All',1e9]];
+function stockSeg(el,cur,on){seg(el,ORDER.map(c=>[c,`${c} ${esc(t('name.'+c))}`]),cur,on)}
+function renderMarket(){
+  stockSeg($('#mk-stock'),MK.code,v=>{MK.code=v;drawMarket()});
+  seg($('#mk-range'),RANGES.map(([l])=>[l,t('r.'+l)]),MK.range,v=>{MK.range=v;drawMarket()});
+  $('#mk-csv').onclick=()=>{const s=DB.stocks[MK.code];saveCSV(`${MK.code}_daily.csv`,[['date','open','high','low','close','volume'],...s.rows.map(r=>[r.date,r.open,r.high,r.low,r.close,r.volume])])};
+  drawMarket();}
+function drawMarket(){
+  const s=DB.stocks[MK.code],rows=s.rows,P=rows.map(r=>r.close);const n=Object.fromEntries(RANGES)[MK.range];
+  const m5=ma(P,5),m20=ma(P,20),h20=hvSeries(P,20),h60=hvSeries(P,60);const from=Math.max(0,rows.length-n);
+  const L=rows.slice(from).map(r=>r.date),sl=a=>a.slice(from);
+  const last=rows[rows.length-1],prev=rows[rows.length-2],ch=last.close-prev.close,cls=ch>0?'up':ch<0?'down':'';
+  const hi=Math.max(...sl(P)),lo=Math.min(...sl(P)),rl=t('r.'+MK.range);
+  $('#mk-quote').innerHTML=`<div><div class="label">${MK.code} · ${esc(t('name.'+MK.code))} · <span class="tc">${s.name}</span></div><span class="px ${cls}">${fmt(last.close)}</span> <span class="chg ${cls}">${ch>0?'▲':ch<0?'▼':''} ${fmt(Math.abs(ch))} (${pct(ch/prev.close)})</span></div>
+   <dl class="kv"><dt>${t('mk.date')}</dt><dd>${last.date}</dd><dt>${t('mk.vol')}</dt><dd>${fmt(last.volume,0)}</dd></dl>
+   <dl class="kv"><dt>${esc(t('mk.hi',{r:rl}))}</dt><dd>${fmt(hi)}</dd><dt>${esc(t('mk.lo',{r:rl}))}</dt><dd>${fmt(lo)}</dd></dl>
+   <dl class="kv"><dt>HV20</dt><dd>${pct(h20[h20.length-1],1)}</dd><dt>HV60</dt><dd>${pct(h60[h60.length-1],1)}</dd></dl>`;
+  mk('c-price',()=>({type:'line',data:{labels:L,datasets:[line(t('mk.close'),sl(P),css('--accent'),{fill:{target:'origin'},backgroundColor:css('--accent-soft'),borderWidth:2}),line('MA5',sl(m5),css('--s-arima'),{borderWidth:1.2}),line('MA20',sl(m20),css('--s-garch'),{borderWidth:1.2})]},
+    options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}},y:{grid:{color:css('--line')},ticks:{maxTicksLimit:6},beginAtZero:false}}})}));
+  const vc=sl(rows).map((r,i,a)=>{const pv=i?a[i-1].close:(from?rows[from-1].close:r.open);return r.close>=pv?css('--up'):css('--down')});
+  mk('c-vol',()=>({type:'bar',data:{labels:L,datasets:[{label:t('mk.vol'),data:sl(rows).map(r=>r.volume/1000),backgroundColor:vc,borderWidth:0}]},
+    options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}},y:{grid:{color:css('--line')},ticks:{maxTicksLimit:4,callback:v=>v>=1000?(v/1000)+'M':v+'k'},title:{display:true,text:t('mk.lots')}}}})}));
+  mk('c-hv',()=>({type:'line',data:{labels:L,datasets:[line('HV20',sl(h20).map(v=>v&&v*100),css('--s-lstm')),line('HV60',sl(h60).map(v=>v&&v*100),css('--s-garch'))]},
+    options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8,maxRotation:0}},y:{grid:{color:css('--line')},ticks:{maxTicksLimit:5,callback:v=>v+'%'}}}})}));
+}
+
+/* ---------- options ---------- */
+let OP={exp:null,n:20,vsrc:'atm'};let GARCH_VOL=null;
+function renderOptions(){
+  OP.exp=OP.exp||OPT.exps[0];
+  seg($('#tq-exp'),OPT.exps.map(e=>[e,expLabel(e)]),OP.exp,v=>{OP.exp=v;loadCalcFromChain();drawTQ()});
+  $('#tq-n').onchange=e=>{OP.n=+e.target.value;drawTQ()};
+  ['bs-S','bs-K','bs-r','bs-T','bs-v'].forEach(id=>$('#'+id).oninput=()=>{calc();drawTQ()});
+  $('#iv-cp').onchange=solveIV;$('#iv-px').oninput=solveIV;
+  $('#bs-vsrc').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)return;OP.vsrc=b.dataset.v;applyVsrc();calc();drawTQ()};
+  loadCalcFromChain();drawTQ();drawSmile();}
+function relabelOptions(){const g=$('#bs-vsrc button[data-v="garch"]');g.title=GARCH_VOL==null?t('bs.needg'):'';calc();drawTQ();drawSmile()}
+function chain(){return OPT.chains[OP.exp]}
+function loadCalcFromChain(){const c=chain();$('#bs-S').value=OPT.S.toFixed(2);$('#bs-K').value=c.atm;$('#bs-r').value=(R*100).toFixed(2);$('#bs-T').value=c.days.toFixed(0);
+  const row=c.rows.find(r=>r.K===c.atm);$('#iv-cp').value='C';$('#iv-px').value=row.C.settle;applyVsrc();calc();}
+function applyVsrc(){const c=chain();const g=$('#bs-vsrc button[data-v="garch"]');g.disabled=GARCH_VOL==null;g.title=GARCH_VOL==null?t('bs.needg'):'';
+  if(OP.vsrc==='garch'&&GARCH_VOL==null)OP.vsrc='atm';
+  const v=OP.vsrc==='hv'?OPT.hv20:OP.vsrc==='garch'?GARCH_VOL.v:c.atmIV;
+  $('#bs-v').value=(v*100).toFixed(2);
+  $('#bs-vsrc').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===OP.vsrc));
+  const el=$('#bs-src');if(OP.vsrc==='hv')tx(el,'src.hv');else if(OP.vsrc==='garch')tx(el,'src.garch',{code:GARCH_VOL.code});else tx(el,'src.atm',{k:c.atm});}
+function inputs(){return{S:+$('#bs-S').value,K:+$('#bs-K').value,r:+$('#bs-r').value/100,T:Math.max(0.1,+$('#bs-T').value)/365,v:Math.max(0.001,+$('#bs-v').value/100)}}
+function calc(){const {S,K,r,T,v}=inputs();const o=['C','P'].map(cp=>[cp,bs(S,K,r,T,v,cp)]);
+  $('#bs-out').innerHTML=o.map(([cp,g])=>`<tr><td class="txt">${t(cp==='C'?'call':'put')}</td><td>${fmt(g.price)}</td><td>${g.delta.toFixed(4)}</td><td>${g.gamma.toExponential(3)}</td><td>${fmt(g.theta/365)}</td><td>${fmt(g.vega/100)}</td></tr>`).join('');solveIV();}
+function solveIV(){const {S,K,r,T}=inputs(),cp=$('#iv-cp').value,px=+$('#iv-px').value;const f=v=>bs(S,K,r,T,v,cp).price-px;
+  const tb=[],tq=[];const t0=performance.now();const b=brent(f,0.001,5,1e-4,100,tb);const t1=performance.now();const q=bisect(f,0.001,5,1e-4,200,tq);
+  const out=$('#iv-out');
+  if(!b){out.innerHTML=`<dt>${t('iv.res')}</dt><dd class="up">${t('iv.none')}</dd>`;mk('c-iv',()=>({type:'line',data:{labels:[],datasets:[]},options:baseOpts()}));return}
+  out.innerHTML=`<dt>${t('iv.iv')}</dt><dd><b>${pct(b.x,2)}</b></dd><dt>${t('iv.bit')}</dt><dd>${b.it}</dd><dt>${t('iv.qit')}</dt><dd>${q?q.it:'—'}</dd><dt>${t('iv.ms')}</dt><dd>${(t1-t0).toFixed(3)} ms</dd>`;
+  const n=Math.max(tb.length,tq.length);
+  mk('c-iv',()=>({type:'line',data:{labels:Array.from({length:n},(_,i)=>i+1),datasets:[line('Brent',tb,css('--accent'),{pointRadius:2,borderWidth:2}),line(t('iv.bis'),tq,css('--s-rw'),{pointRadius:1.5})]},
+    options:baseOpts({plugins:{...baseOpts().plugins,legend:{display:true,labels:{boxWidth:12,boxHeight:2}}},scales:{x:{grid:{display:false},title:{display:true,text:t('iv.iter')}},y:{type:'logarithmic',grid:{color:css('--line')},ticks:{maxTicksLimit:5,callback:v=>Number(v).toExponential(0)}}}})}));}
+function drawTQ(){const c=chain(),{S,r,T,v}=inputs();const i0=c.rows.findIndex(x=>x.K===c.atm),rows=c.rows.slice(Math.max(0,i0-OP.n),i0+OP.n+1);
+  $('#tq-meta').innerHTML=[t('tq.exp',{d:c.expiry}),t('tq.days',{n:c.days.toFixed(0)}),t('tq.spot',{s:fmt(OPT.S)}),t('tq.atm',{v:pct(c.atmIV,1)})].map(s=>`<span class="pill">${esc(s)}</span>`).join('');
+  const head=`<thead><tr><th class="side" colspan="6">${t('tq.call')}</th><th class="k">${t('tq.strike')}</th><th class="side" colspan="6">${t('tq.put')}</th></tr>
+  <tr><th>${t('tq.oi')}</th><th>${t('tq.vol')}</th><th>${t('tq.settle')}</th><th>${t('tq.theo')}</th><th>IV</th><th>Δ</th><th class="k">K</th><th>Δ</th><th>IV</th><th>${t('tq.theo')}</th><th>${t('tq.settle')}</th><th>${t('tq.vol')}</th><th>${t('tq.oi')}</th></tr></thead>`;
+  const body=rows.map(x=>{const tc=bs(S,x.K,r,T,v,'C').price,tp=bs(S,x.K,r,T,v,'P').price,ci=x.K<S?' itm':'',pi=x.K>S?' itm':'';
+    const C=x.C,P=x.P,td=(val,d,cls)=>`<td class="${cls}">${val==null?'—':fmt(val,d)}</td>`;
+    return `<tr data-k="${x.K}" class="${x.K===c.atm?'atm':''}">${td(C.oi,0,ci)}${td(C.vol,0,ci)}${td(C.settle,C.settle<10?1:0,ci)}${td(tc,1,ci)}<td class="${ci}">${C.iv?pct(C.iv,1):'—'}</td>${td(C.delta,3,ci)}<td class="k">${x.K}</td>${td(P.delta,3,pi)}<td class="${pi}">${P.iv?pct(P.iv,1):'—'}</td>${td(tp,1,pi)}${td(P.settle,P.settle<10?1:0,pi)}${td(P.vol,0,pi)}${td(P.oi,0,pi)}</tr>`}).join('');
+  const tbl=$('#tq');tbl.innerHTML=head+'<tbody>'+body+'</tbody>';
+  tbl.querySelector('tbody').onclick=e=>{const tr=e.target.closest('tr');if(!tr)return;const k=+tr.dataset.k,x=c.rows.find(y=>y.K===k);
+    const side=e.target.cellIndex>6?'P':'C';$('#bs-K').value=k;$('#iv-cp').value=side;$('#iv-px').value=x[side].settle;
+    if(x[side].iv){$('#bs-v').value=(x[side].iv*100).toFixed(2);tx($('#bs-src'),'src.iv',{side:t(side==='C'?'call':'put'),k})}calc();drawTQ();
+    $('#bs-S').closest('.panel').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});};
+}
+function drawSmile(){const cols=['--s-arima','--s-lstm','--s-garch'];
+  const ds=OPT.exps.slice(0,3).map((e,i)=>{const c=OPT.chains[e];const pts=c.rows.filter(x=>Math.abs(x.K/OPT.S-1)<=0.2).map(x=>{const o=x.K<OPT.S?x.P:x.C;return o.iv&&o.settle>=2?{x:x.K,y:o.iv*100}:null}).filter(Boolean);
+    return line(`${expLabel(e)} (${t('sm.d',{n:c.days.toFixed(0)})})`,pts,css(cols[i]),{pointRadius:2,borderWidth:1.6})});
+  mk('c-smile',()=>({type:'line',data:{datasets:ds},options:baseOpts({interaction:{mode:'nearest',intersect:false},
+    plugins:{...baseOpts().plugins,tooltip:{...baseOpts().plugins.tooltip,callbacks:{label:c=>`${c.dataset.label}: K ${c.parsed.x} · IV ${c.parsed.y.toFixed(1)}%`}}},
+    scales:{x:{type:'linear',grid:{display:false},title:{display:true,text:t('sm.x')},ticks:{maxTicksLimit:8}},y:{grid:{color:css('--line')},title:{display:true,text:t('sm.y')},ticks:{callback:v=>v+'%'}}}})}));}
+
+/* ---------- sentiment ---------- */
+let SE={exp:null};
+function renderSentiment(){SE.exp=SE.exp||OPT.exps[0];
+  const tiles=OPT.exps.map(e=>{const c=OPT.chains[e];let cv=0,pv=0,co=0,po=0;for(const x of c.rows){cv+=x.C.vol||0;pv+=x.P.vol||0;co+=x.C.oi||0;po+=x.P.oi||0}
+    let mp=null,best=Infinity;for(const X of c.rows){let pay=0;for(const x of c.rows)pay+=(x.C.oi||0)*Math.max(X.K-x.K,0)+(x.P.oi||0)*Math.max(x.K-X.K,0);if(pay<best){best=pay;mp=X.K}}
+    const r=po/co;return `<div class="tile"><span class="label">${esc(t('se.tile',{m:expLabel(e),d:c.expiry}))}</span>
+      <span class="v">${r.toFixed(2)}</span><span class="d">${esc(t('se.ratio',{p:po.toLocaleString(),c:co.toLocaleString()}))}</span>
+      <dl class="kv"><dt>${t('se.pcv')}</dt><dd>${cv?(pv/cv).toFixed(2):'—'}</dd><dt>${t('se.mp')}</dt><dd>${mp?.toLocaleString()}</dd><dt>${t('se.dist')}</dt><dd class="${mp>OPT.S?'up':'down'}">${mp?((mp/OPT.S-1)*100).toFixed(1)+'%':'—'}</dd></dl></div>`});
+  $('#se-tiles').innerHTML=tiles.join('');
+  seg($('#se-exp'),OPT.exps.map(e=>[e,expLabel(e)]),SE.exp,v=>{SE.exp=v;drawOI()});drawOI();}
+function drawOI(){const c=OPT.chains[SE.exp];const rows=c.rows.filter(x=>Math.abs(x.K/OPT.S-1)<=0.15);
+  const spotPlugin={id:'spot',afterDatasetsDraw(ch){const xs=ch.scales.x,ys=ch.scales.y;const ks=rows.map(r=>r.K);let i=ks.findIndex(k=>k>=OPT.S);if(i<1)return;
+    const fx=xs.getPixelForValue(i-1)+(OPT.S-ks[i-1])/(ks[i]-ks[i-1])*(xs.getPixelForValue(i)-xs.getPixelForValue(i-1));const g=ch.ctx;g.save();g.strokeStyle=css('--ink');g.setLineDash([4,4]);g.beginPath();g.moveTo(fx,ys.top);g.lineTo(fx,ys.bottom);g.stroke();
+    g.fillStyle=css('--ink');g.font=`600 11px ${css('--f-body')}`;g.fillText(t('spot')+' '+Math.round(OPT.S),Math.min(fx+6,xs.right-90),ys.top+12);g.restore()}};
+  mk('c-oi',()=>({type:'bar',data:{labels:rows.map(r=>r.K),datasets:[{label:t('se.coi'),data:rows.map(r=>r.C.oi||0),backgroundColor:css('--up')},{label:t('se.poi'),data:rows.map(r=>r.P.oi||0),backgroundColor:css('--down')}]},
+    options:baseOpts({scales:{x:{grid:{display:false},ticks:{maxTicksLimit:12,maxRotation:0}},y:{grid:{color:css('--line')},title:{display:true,text:t('se.y')}}}}),plugins:[spotPlugin]}));}
+
+/* ---------- forecasting (paper §6–7) ---------- */
+let FC={code:'2330',res:{},job:0};let worker=null;
+function getWorker(){if(worker)return worker;try{const src=$('#worker-src').textContent;worker=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})))}
+  catch(e){const fake={onmessage:null,postMessage(m){setTimeout(()=>{const self={postMessage:x=>fake.onmessage&&fake.onmessage({data:x})};new Function('self',$('#worker-src').textContent+'\nreturn self;')(self).onmessage({data:m})})}};worker=fake}
+  return worker}
+function startForecast(){stockSeg($('#fc-stock'),FC.code,v=>{FC.code=v;runStats()});$('#fc-train').onclick=trainLSTM;
+  tx($('#fc-stat-pill'),'p.queued');tx($('#fc-lstm-pill'),'l.none');
+  $('#fc-csv').onclick=()=>{const R=FC.res[FC.code];if(!R)return;const tt=R.test;saveCSV(`${FC.code}_forecasts.csv`,[['date','actual','arima','garch','lstm','ensemble'],...tt.dates.map((d,i)=>[d,tt.actual[i],R.arima?.preds[i]?.toFixed(2),R.garch?.preds[i]?.toFixed(2),R.lstm?.preds[i]?.toFixed(2),R.ens?.[i]?.toFixed(2)])])};
+  runStats();}
+function series(code){const rows=DB.stocks[code].rows;const P=rows.map(r=>r.close),split=Math.floor(P.length*0.8);return{rows,P,split,dates:rows.map(r=>r.date)}}
+/* UI-thread responsiveness meter (H3) */
+let gapMax=0,gapOn=false,lastF=0;function frame(ts){if(gapOn){if(lastF)gapMax=Math.max(gapMax,ts-lastF);lastF=ts;requestAnimationFrame(frame)}}
+function gapStart(){gapMax=0;lastF=0;gapOn=true;requestAnimationFrame(frame)}function gapStop(){gapOn=false;return gapMax}
+function runStats(){const code=FC.code;const {P,split,dates}=series(code);
+  if(!FC.res[code])FC.res[code]={test:{dates:dates.slice(split),actual:P.slice(split),prev:P.slice(split-1,-1)},last:P[P.length-1],lastDate:dates[dates.length-1]};
+  const R=FC.res[code];drawForecast();
+  if(R.arima){statPanel();return}
+  const id=++FC.job,pill=$('#fc-stat-pill');tx(pill,'p.run',null,'pill run');$('#fc-stat-bar').style.width='2%';$('#fc-stat').innerHTML='';
+  const w=getWorker();const t0=performance.now();gapStart();
+  w.onmessage=ev=>{const m=ev.data;if(m.id!==FC.job)return;
+    if(m.type==='progress'){$('#fc-stat-bar').style.width=(m.v*100).toFixed(0)+'%';return}
+    const gap=gapStop();
+    if(m.type==='error'){tx(pill,'p.fail',null,'pill bad');$('#fc-stat').innerHTML=`<dt>${t('p.err')}</dt><dd>${esc(m.message)}</dd>`;return}
+    $('#fc-stat-bar').style.width='100%';Object.assign(FC.res[code],{arima:m.arima,garch:m.garch,statMs:performance.now()-t0,statGap:gap});
+    GARCH_VOL={v:m.garch.nextAnn,code};if(seen.options)applyVsrc();
+    if(FC.code===code){statPanel();drawForecast()}};
+  w.postMessage({P,split,id});}
+function statPanel(){const R=FC.res[FC.code];if(!R||!R.arima)return;const a=R.arima,g=R.garch;tx($('#fc-stat-pill'),'p.done',null,'pill ok');$('#fc-stat-bar').style.width='100%';
+  const adf=a.adf.map(x=>`d=${x.d}: ${x.stat.toFixed(2)}`).join(' · ');
+  $('#fc-stat').innerHTML=`<dt>${t('fc.adf')}</dt><dd>${adf}</dd><dt>${t('fc.order')}</dt><dd><b>(${a.order.join(', ')})</b></dd><dt>AIC</dt><dd>${fmt(a.aic,1)}</dd><dt>${t('fc.runner')}</dt><dd>${a.top.slice(1).map(x=>`(${x.p},${a.order[1]},${x.q}) ${fmt(x.aic,1)}`).join(' · ')}</dd>
+  <dt>GARCH ω, α, β</dt><dd>${g.params.omega.toFixed(4)}, ${g.params.alpha.toFixed(3)}, ${g.params.beta.toFixed(3)}</dd><dt>${t('fc.pers')}</dt><dd>${g.persistence.toFixed(3)}</dd>
+  <dt>${t('fc.sig')}</dt><dd><b>${pct(g.nextAnn,1)}</b></dd><dt>${t('fc.ms')}</dt><dd>${fmt(R.statMs,0)} ms</dd>`;}
+function metrics(pred,actual,prev){let se=0,ae=0,ape=0,hit=0,cnt=0;for(let i=0;i<actual.length;i++){const e=pred[i]-actual[i];se+=e*e;ae+=Math.abs(e);ape+=Math.abs(e/actual[i]);
+  const da=Math.sign(actual[i]-prev[i]),dp=Math.sign(pred[i]-prev[i]);if(da!==0&&dp!==0){cnt++;if(da===dp)hit++}}
+  const n=actual.length;return{rmse:Math.sqrt(se/n),mae:ae/n,mape:ape/n,dir:cnt?hit/cnt:null}}
+const MODEL_NAME={arima:'ARIMA',garch:'GARCH(1,1)',lstm:'LSTM'};
+function drawForecast(){const R=FC.res[FC.code];if(!R)return;const tt=R.test;
+  const models=[{id:'rw',p:tt.prev,c:'--s-rw'},{id:'arima',p:R.arima?.preds,c:'--s-arima'},{id:'garch',p:R.garch?.preds,c:'--s-garch'},{id:'lstm',p:R.lstm?.preds,c:'--s-lstm'}];
+  const avail=models.slice(1).filter(m=>m.p);R.ens=avail.length>=2?tt.actual.map((_,i)=>avail.reduce((s,m)=>s+m.p[i],0)/avail.length):null;
+  const name=m=>m.id==='rw'?t('m.rw'):m.id==='ens'?(avail.length===3?t('m.ens'):t('m.ensOf',{list:avail.map(x=>x.id.toUpperCase()).join(' + ')})):MODEL_NAME[m.id];
+  if(R.ens)models.push({id:'ens',p:R.ens,c:'--s-ens'});
+  const rw=metrics(tt.prev,tt.actual,tt.prev).rmse;
+  const rowsM=models.filter(m=>m.p).map(m=>{const x=metrics(m.p,tt.actual,tt.prev);return{...m,n:name(m),m:x,u:x.rmse/rw}});
+  const best=rowsM.filter(r=>r.id!=='rw').sort((a,b)=>a.m.rmse-b.m.rmse)[0];
+  $('#fc-metrics tbody').innerHTML=rowsM.map(r=>`<tr class="${r===best?'best':''}"><td class="txt"><i style="display:inline-block;width:10px;height:3px;background:var(${r.c});vertical-align:middle;margin-right:6px"></i>${esc(r.n)}</td><td>${fmt(r.m.rmse)}</td><td>${fmt(r.m.mae)}</td><td>${pct(r.m.mape)}</td><td>${r.id==='rw'?'—':pct(r.m.dir,1)}</td><td>${r.u.toFixed(3)}</td></tr>`).join('');
+  $('#fc-span').textContent=t('fc.span',{a:tt.dates[0],b:tt.dates[tt.dates.length-1],n:tt.dates.length});
+  const ensRow=rowsM.find(r=>r.id==='ens');
+  $('#fc-h2').textContent=!R.lstm?t('h2.need'):ensRow&&ensRow===best&&ensRow.u<1?t('h2.ok',{u:ensRow.u.toFixed(3)}):
+    t('h2.no',{best:best.n,ens:ensRow?t('h2.ens',{u:ensRow.u.toFixed(3)}):''});
+  const lg=rowsM.filter(m=>m.id!=='rw');
+  $('#fc-legend').innerHTML=`<span><i style="background:var(--muted)"></i>${t('fc.actual')}</span>`+lg.map(m=>`<span><i style="background:var(${m.c})"></i>${esc(m.n)}</span>`).join('')+(R.arima?`<span><i style="background:var(--s-arima);opacity:.3;height:8px"></i>${t('fc.band')}</span>`:'');
+  mk('c-fc',()=>{const ds=[line(t('fc.actual'),tt.actual,css('--muted'),{borderWidth:2.2})];
+    if(R.arima){const h=1.96*R.arima.sigma;const col=css('--s-arima');ds.push(line('band-hi',R.arima.preds.map(v=>v+h),'transparent',{borderWidth:0,backgroundColor:col+'22',fill:'+1'}),line('band-lo',R.arima.preds.map(v=>v-h),'transparent',{borderWidth:0}))}
+    for(const m of lg)ds.push(line(m.n,m.p,css(m.c),{borderWidth:m.id==='ens'?2:1.3,borderDash:m.id==='garch'?[4,3]:[]}));
+    return{type:'line',data:{labels:tt.dates,datasets:ds},options:baseOpts({plugins:{...baseOpts().plugins,tooltip:{...baseOpts().plugins.tooltip,filter:i=>!/^band-/.test(i.dataset.label)}}})}});
+  const nx=['arima','garch','lstm'].map(id=>[MODEL_NAME[id],R[id]?.next]).filter(x=>x[1]!=null);
+  if(nx.length>=2)nx.push([avail.length===3?t('m.ens'):t('m.ensPart'),nx.reduce((s,x)=>s+x[1],0)/nx.length]);
+  $('#fc-next-date').textContent=t('fc.after',{d:R.lastDate,p:fmt(R.last)});
+  $('#fc-next tbody').innerHTML=nx.map(([n,v])=>{const d=v-R.last;return `<tr><td class="txt">${esc(n)}</td><td>${fmt(v)}</td><td class="${d>0?'up':d<0?'down':''}">${d>0?'+':''}${fmt(d)} (${pct(d/R.last)})</td></tr>`}).join('')||`<tr><td class="txt muted" colspan="3">${t('fc.running')}</td></tr>`;
+  $('#fc-h3').innerHTML=R.arima?`<dt>${t('h3.stat')}</dt><dd class="${R.statGap<300?'down':'up'}">${fmt(R.statGap,0)} ms ${R.statGap<300?'(&lt; 300 ms, H3)':''}</dd>`+(R.lstm?`<dt>${t('h3.lstm')}</dt><dd>${fmt(R.lstm.gap,0)} ms</dd><dt>${t('h3.ep')}</dt><dd>${R.lstm.epochs} / ${R.lstm.backend}</dd>`:''):'';
+  const lp=$('#fc-lstm-pill');if(R.lstm)tx(lp,'l.done',{n:R.lstm.epochs},'pill ok');else if(!FC.training)tx(lp,'l.none',null,'pill');
+  mk('c-loss',()=>{const L=R.lstm||R.lstmLive||{loss:[],val:[]};return{type:'line',data:{labels:L.loss.map((_,i)=>i+1),datasets:[line(t('l.train'),L.loss.slice(),css('--s-lstm'),{borderWidth:2}),line(t('l.val'),L.val.slice(),css('--s-arima'),{borderWidth:1.5})]},
+    options:baseOpts({plugins:{...baseOpts().plugins,legend:{display:true,labels:{boxWidth:12,boxHeight:2}}},scales:{x:{grid:{display:false},title:{display:true,text:t('l.epoch')}},y:{type:'logarithmic',grid:{color:css('--line')},ticks:{maxTicksLimit:4,callback:v=>Number(v).toExponential(0)}}}})}});
+}
+async function trainLSTM(){if(FC.training)return;const pill=$('#fc-lstm-pill');
+  if(typeof tf==='undefined'){tx(pill,'l.tf',null,'pill bad');return}
+  FC.training=true;const code=FC.code,btn=$('#fc-train');btn.disabled=true;tx(pill,'l.prep',null,'pill run');
+  const {P,split}=series(code);const W=60,maxEp=+$('#fc-ep').value;
+  const tr=P.slice(0,split),mn=Math.min(...tr),mx=Math.max(...tr),sc=v=>(v-mn)/(mx-mn),un=v=>v*(mx-mn)+mn;const s=P.map(sc);
+  const X=[],Y=[];for(let i=W;i<split;i++){X.push(s.slice(i-W,i));Y.push(s[i])}
+  const Xt=[];for(let i=split;i<P.length;i++)Xt.push(s.slice(i-W,i));Xt.push(s.slice(P.length-W));
+  try{await tf.ready();try{if(tf.getBackend()!=='webgl')await tf.setBackend('webgl')}catch(e){}
+    const model=tf.sequential();model.add(tf.layers.lstm({units:50,returnSequences:true,inputShape:[W,1]}));model.add(tf.layers.dropout({rate:0.2}));
+    model.add(tf.layers.lstm({units:50}));model.add(tf.layers.dropout({rate:0.2}));model.add(tf.layers.dense({units:1}));
+    model.compile({optimizer:tf.train.adam(0.001),loss:'meanSquaredError'});
+    const xs=tf.tensor3d(X.map(r=>r.map(v=>[v]))),ys=tf.tensor2d(Y.map(v=>[v]));
+    const loss=[],val=[];let best=Infinity,wait=0,ep=0;const R=FC.res[code];R.lstm=null;R.lstmLive={loss,val};if(FC.code===code)drawForecast();gapStart();
+    await model.fit(xs,ys,{epochs:maxEp,batchSize:32,validationSplit:0.1,shuffle:true,callbacks:{onEpochEnd:async(e,l)=>{ep=e+1;loss.push(l.loss);val.push(l.val_loss);
+      if(l.val_loss<best-1e-7){best=l.val_loss;wait=0}else if(++wait>=10)model.stopTraining=true;
+      tx(pill,'l.ep',{e:ep,m:maxEp,l:l.val_loss.toExponential(2)});$('#fc-lstm-bar').style.width=(ep/maxEp*100)+'%';
+      if(FC.code===code&&charts['c-loss'])mk('c-loss',charts['c-loss']._fn);
+      await tf.nextFrame()}}});
+    const gap=gapStop();const xt=tf.tensor3d(Xt.map(r=>r.map(v=>[v])));const out=Array.from(model.predict(xt).dataSync()).map(un);
+    tf.dispose([xs,ys,xt]);model.dispose();
+    R.lstm={preds:out.slice(0,-1),next:out[out.length-1],loss,val,epochs:ep,backend:tf.getBackend(),gap};$('#fc-lstm-bar').style.width='100%';}
+  catch(e){tx(pill,'l.fail',{m:e.message},'pill bad')}
+  FC.training=false;btn.disabled=false;if(FC.code===code)drawForecast();}
+
+/* ---------- boot ---------- */
+function boot(){LANG=pickLang();applyStatic();
+  $('#lang').onclick=e=>{const b=e.target.closest('button');if(b)setLang(b.dataset.v)};
+  ingest();buildOptions();renderOverview();renderETL();
+  const h=(location.hash||'').slice(1);show(TABS.includes(h)?h:(store('tab')||'overview'));
+  const mq=matchMedia('(prefers-color-scheme: dark)');mq.addEventListener?.('change',rethemeAll);
+  new MutationObserver(rethemeAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  window.addEventListener('hashchange',()=>{const x=location.hash.slice(1);if(TABS.includes(x))show(x)});
+  $('#mk-csv').hidden=false;$('#fc-csv').hidden=false;
+  if(window.claude?.use)window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{});
+}
+boot();
+</script>
