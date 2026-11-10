@@ -560,7 +560,7 @@ en:{
  'p.queued':'Queued','p.run':'Running in worker','p.done':'Done','p.fail':'Failed','p.err':'Error',
  'fc.adf':'ADF statistic (5% crit. −2.86)','fc.order':'Selected ARIMA (p, d, q)','fc.runner':'Runner-up orders','fc.pers':'Persistence α+β','fc.sig':'Next-day σ (annualised) → option pricer','fc.ms':'Worker job time',
  'fc.ep':'Max epochs','fc.ep15':'15 (quick)','fc.ep100':'100 (paper)','fc.train':'Train LSTM',
- 'fc.lnote':'2 × 50-unit LSTM layers, dropout 0.2, 60-day window, Adam (lr 0.001), MSE, batch 32, early stopping patience 10, MinMax scaling fitted on the training set. Weights start random, so results vary slightly between runs.',
+ 'fc.lnote':'2 × 50-unit LSTM layers, dropout 0.2, 60-day window, Adam (lr 0.001), MSE, batch 32, early stopping patience 10. Each window is normalised to its last close (the model predicts the next-day return, converted back to a price), with MinMax scaling fitted on the training set; raw-price scaling saturates once the test set trades above the training range. Weights start random, so results vary slightly between runs.',
  'l.none':'Not trained','l.prep':'Preparing','l.ep':'Epoch {e}/{m} · val loss {l}','l.done':'Trained · {n} epochs','l.fail':'Training failed: {m}','l.tf':'TensorFlow.js failed to load',
  'l.train':'train loss','l.val':'val loss','l.epoch':'epoch',
  'fc.test':'Test-set forecasts','fc.actual':'Actual','fc.band':'ARIMA 95% band',
@@ -648,7 +648,7 @@ zh:{
  'p.queued':'排隊中','p.run':'背景執行中','p.done':'完成','p.fail':'失敗','p.err':'錯誤',
  'fc.adf':'ADF 統計量（5% 臨界值 −2.86）','fc.order':'選定 ARIMA (p, d, q)','fc.runner':'次佳階數','fc.pers':'持續性 α+β','fc.sig':'次日 σ（年化）→ 選擇權定價','fc.ms':'背景工作耗時',
  'fc.ep':'最大訓練輪數','fc.ep15':'15（快速）','fc.ep100':'100（論文設定）','fc.train':'訓練 LSTM',
- 'fc.lnote':'2 層 × 50 個 LSTM 單元、Dropout 0.2、60 日視窗、Adam（學習率 0.001）、MSE、批次 32、Early Stopping patience 10，MinMax 縮放僅以訓練集擬合。權重為隨機初始化，每次結果會略有差異。',
+ 'fc.lnote':'2 層 × 50 個 LSTM 單元、Dropout 0.2、60 日視窗、Adam（學習率 0.001）、MSE、批次 32、Early Stopping patience 10。每個視窗以最後一日收盤價標準化（模型預測隔日報酬率，再換算回價格），MinMax 縮放僅以訓練集擬合；若直接縮放股價，測試期股價超出訓練區間時模型會飽和。權重為隨機初始化，每次結果會略有差異。',
  'l.none':'尚未訓練','l.prep':'準備中','l.ep':'第 {e}/{m} 輪 · 驗證損失 {l}','l.done':'已訓練 · {n} 輪','l.fail':'訓練失敗：{m}','l.tf':'TensorFlow.js 載入失敗',
  'l.train':'訓練損失','l.val':'驗證損失','l.epoch':'訓練輪數',
  'fc.test':'測試集預測','fc.actual':'實際值','fc.band':'ARIMA 95% 區間',
@@ -736,7 +736,7 @@ ko:{
  'p.queued':'대기 중','p.run':'워커에서 실행 중','p.done':'완료','p.fail':'실패','p.err':'오류',
  'fc.adf':'ADF 통계량(5% 임계값 −2.86)','fc.order':'선택된 ARIMA (p, d, q)','fc.runner':'차순위 차수','fc.pers':'지속성 α+β','fc.sig':'다음 날 σ(연율화) → 옵션 가격 계산','fc.ms':'워커 작업 시간',
  'fc.ep':'최대 에포크','fc.ep15':'15(빠름)','fc.ep100':'100(논문)','fc.train':'LSTM 학습',
- 'fc.lnote':'LSTM 2층 × 50유닛, 드롭아웃 0.2, 60일 윈도, Adam(학습률 0.001), MSE, 배치 32, 조기 종료 patience 10, MinMax 스케일링은 학습 세트로만 적합. 가중치가 무작위로 초기화되어 실행마다 결과가 조금씩 다릅니다.',
+ 'fc.lnote':'LSTM 2층 × 50유닛, 드롭아웃 0.2, 60일 윈도, Adam(학습률 0.001), MSE, 배치 32, 조기 종료 patience 10. 각 윈도는 마지막 종가 기준으로 정규화하고(모델은 다음 날 수익률을 예측한 뒤 가격으로 환산), MinMax 스케일링은 학습 세트로만 적합. 원시 가격을 스케일링하면 테스트 기간 가격이 학습 범위를 넘을 때 모델이 포화됩니다. 가중치가 무작위로 초기화되어 실행마다 결과가 조금씩 다릅니다.',
  'l.none':'미학습','l.prep':'준비 중','l.ep':'에포크 {e}/{m} · 검증 손실 {l}','l.done':'학습 완료 · {n} 에포크','l.fail':'학습 실패: {m}','l.tf':'TensorFlow.js 로드 실패',
  'l.train':'학습 손실','l.val':'검증 손실','l.epoch':'에포크',
  'fc.test':'테스트 세트 예측','fc.actual':'실제값','fc.band':'ARIMA 95% 구간',
@@ -1071,21 +1071,25 @@ async function trainLSTM(){if(FC.training)return;const pill=$('#fc-lstm-pill');
   if(typeof tf==='undefined'){tx(pill,'l.tf',null,'pill bad');return}
   FC.training=true;const code=FC.code,btn=$('#fc-train');btn.disabled=true;tx(pill,'l.prep',null,'pill run');
   const {P,split}=series(code);const W=60,maxEp=+$('#fc-ep').value;
-  const tr=P.slice(0,split),mn=Math.min(...tr),mx=Math.max(...tr),sc=v=>(v-mn)/(mx-mn),un=v=>v*(mx-mn)+mn;const s=P.map(sc);
-  const X=[],Y=[];for(let i=W;i<split;i++){X.push(s.slice(i-W,i));Y.push(s[i])}
-  const Xt=[];for(let i=split;i<P.length;i++)Xt.push(s.slice(i-W,i));Xt.push(s.slice(P.length-W));
+  // Each window is expressed relative to its last close, so the test set may trade far above the training range
+  // without saturating the network; MinMax is then fitted on the training windows only.
+  const win=e=>P.slice(e-W,e).map(v=>v/P[e-1]-1);
+  const X0=[],Y0=[];for(let i=W;i<split;i++){X0.push(win(i));Y0.push(P[i]/P[i-1]-1)}
+  const all=X0.flat().concat(Y0),mn=Math.min(...all),mx=Math.max(...all),sc=v=>(v-mn)/(mx-mn),un=v=>v*(mx-mn)+mn;
+  const X=X0.map(r=>r.map(sc)),Y=Y0.map(sc);
+  const ends=[];for(let i=split;i<=P.length;i++)ends.push(i);const Xt=ends.map(e=>win(e).map(sc));
   try{await tf.ready();try{if(tf.getBackend()!=='webgl')await tf.setBackend('webgl')}catch(e){}
     const model=tf.sequential();model.add(tf.layers.lstm({units:50,returnSequences:true,inputShape:[W,1]}));model.add(tf.layers.dropout({rate:0.2}));
     model.add(tf.layers.lstm({units:50}));model.add(tf.layers.dropout({rate:0.2}));model.add(tf.layers.dense({units:1}));
     model.compile({optimizer:tf.train.adam(0.001),loss:'meanSquaredError'});
     const xs=tf.tensor3d(X.map(r=>r.map(v=>[v]))),ys=tf.tensor2d(Y.map(v=>[v]));
     const loss=[],val=[];let best=Infinity,wait=0,ep=0;const R=FC.res[code];R.lstm=null;R.lstmLive={loss,val};if(FC.code===code)drawForecast();gapStart();
-    await model.fit(xs,ys,{epochs:maxEp,batchSize:32,validationSplit:0.1,shuffle:true,callbacks:{onEpochEnd:async(e,l)=>{ep=e+1;loss.push(l.loss);val.push(l.val_loss);
+    await model.fit(xs,ys,{epochs:maxEp,batchSize:32,validationSplit:0.1,shuffle:true,yieldEvery:'batch',callbacks:{onEpochEnd:async(e,l)=>{ep=e+1;loss.push(l.loss);val.push(l.val_loss);
       if(l.val_loss<best-1e-7){best=l.val_loss;wait=0}else if(++wait>=10)model.stopTraining=true;
       tx(pill,'l.ep',{e:ep,m:maxEp,l:l.val_loss.toExponential(2)});$('#fc-lstm-bar').style.width=(ep/maxEp*100)+'%';
       if(FC.code===code&&charts['c-loss'])mk('c-loss',charts['c-loss']._fn);
       await tf.nextFrame()}}});
-    const gap=gapStop();const xt=tf.tensor3d(Xt.map(r=>r.map(v=>[v])));const out=Array.from(model.predict(xt).dataSync()).map(un);
+    const gap=gapStop();const xt=tf.tensor3d(Xt.map(r=>r.map(v=>[v])));const out=Array.from(model.predict(xt).dataSync()).map((v,k)=>P[ends[k]-1]*(1+un(v)));
     tf.dispose([xs,ys,xt]);model.dispose();
     R.lstm={preds:out.slice(0,-1),next:out[out.length-1],loss,val,epochs:ep,backend:tf.getBackend(),gap};$('#fc-lstm-bar').style.width='100%';}
   catch(e){tx(pill,'l.fail',{m:e.message},'pill bad')}
