@@ -129,7 +129,12 @@ def build():
     data = {"captured": meta.get("captured", "unknown"), "stocks": stocks, "taiex": taiex, "txo": {"date": d, "rows": txo}, "big5": base64.b64encode(line.encode("big5")).decode()}
     with open(os.path.join(ROOT, "template.html"), encoding="utf-8") as f:
         tpl = f.read()
-    html = tpl.replace("/*__DATA__*/null", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    body = tpl.replace("/*__DATA__*/null", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    # template.html is page content only (the claude.ai artifact host supplies the skeleton); add one for GitHub Pages.
+    html = ('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+            '<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body>\n'
+            + body + '\n</body></html>\n')
     os.makedirs(os.path.join(ROOT, "site"), exist_ok=True)
     with open(os.path.join(ROOT, "site", "index.html"), "w", encoding="utf-8", newline="\n") as f:
         f.write(html)
